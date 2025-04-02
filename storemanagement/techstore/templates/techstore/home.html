@@ -10,6 +10,7 @@
   
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   
   <link rel="stylesheet" href="{% static 'techstore/css/style.css' %}">
 
@@ -17,9 +18,74 @@
 <body>
   {% include 'techstore/header.html' %}  <!-- ✅ Include header.html here -->
   
-   
-  <h1 class="text-primary"> hi </h1>
+  <main>
+  <div class="container col-xl-10 col-xxl-8 px-4 py-1">
+    <div class="row align-items-center g-lg-5 py-5">
+      <div class="col-lg-7 text-center text-lg-start">
+        <h1 class="display-4 fw-bold lh-1 mb-3 text-danger">INVENTORY MANAGEMENT APP</h1>
+        <p class="col-lg-10 fs-4 text-secondary">Inventory tracking, real-time visibility into stock levels and movement, automates order management, customizable reports and analytics, empowering informed  decisions.</p>
+      </div>
+      <div class="col-md-10 mx-auto col-lg-5" id="login-form">
+
+        <form method="POST" action="{% url 'home' %}" class="p-4 p-md-5 border rounded-3 bg-body-tertiary needs-validation" novalidate autocomplete="">
+          {% csrf_token %}
+
+          <h1 class="fs-4 card-title fw-bold mb-4 text-center">LOGIN</h1>
+          <div class="mb-3">
+            <label class="mb-2 text-muted">User Name</label>
+            <input type="text" class="form-control" name="username" required autofocus>
+            <div class="invalid-feedback">
+              User Name is invalid
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <div class="mb-2 w-100">
+              <label class="text-muted">Password</label>
+              <a href="" class="float-end">
+                Forgot Password?
+              </a>
+            </div>
+            <input type="password" class="form-control" name="password" required>
+            <div class="invalid-feedback">
+              Password is required
+            </div>
+          </div>
+
+
+          <div class="d-flex align-items-center">
+            <div class="form-check">
+              <input type="checkbox" name="remember" id="remember" class="form-check-input">
+              <label for="remember" class="form-check-label">Remember Me</label>
+            </div>
+            <button type="submit" class="btn btn-primary ms-auto">
+              Login
+            </button>
+          </div>
+
+
+          {% if messages %}
+          <div class="d-flex justify-content-center">
+            <!-- Adjust width as needed -->
+              {% for message in messages %}
+                <div class="alert alert-warning alert-dismissible fade show mt-3 p-1 px-3 mb-0 text-center" role="alert">
+                  {{ message }}
+                </div>
+              {% endfor %}
+            
+          </div>
+        {% endif %}
+          
+      
+        </form>
+
+      </div>
+    </div>
+  </div>
+  </main>
 
   {% include 'techstore/footer.html' %}
+
+  <script src="{% static 'techstore/script/main.js' %}"></script>
 </body>
 </html>
