@@ -1,8 +1,9 @@
-<header class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-between p-3 mb-4 border-bottom text-bg-primary">
+{% load static %}
+<header class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-between px-5 py-2 mb-4 border-bottom text-bg-info">
     <div class="col-md-3 mb-2 mb-md-0">
-    {% comment %} <a href="/" class="d-inline-flex link-body-emphasis text-decoration-none">
-        <svg class="bi" width="40" height="32" role="img" aria-label="Bootstrap"><use xlink:href="#bootstrap"/></svg>
-    </a> {% endcomment %}
+    <a href="/" class="d-inline-flex link-body-emphasis text-decoration-none">
+        <img class="bi" width="90" height="90" role="img" aria-label="Bootstrap" src="{% static 'techstore/images/tnp.png' %}">
+    </a> 
     </div>
 
     <ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
