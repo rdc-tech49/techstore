@@ -24,7 +24,7 @@ def home(request):
         return render(request, "techstore/home.html",{})
     
 
-def register(request):
+def signup(request):
     if request.method == "POST":
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
@@ -35,4 +35,7 @@ def register(request):
             messages.error(request, "Please correct the errors below.")
     else:
         form = CustomUserCreationForm()
-    return render(request, 'techstore/register.html', {'form': form})
+    return render(request, 'techstore/signup.html', {'form': form})
+
+def store_admin(request):
+    return render(request, "techstore/storeadmin-page.html", {})
