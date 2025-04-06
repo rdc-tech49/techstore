@@ -43,3 +43,20 @@ class CustomUserCreationForm(UserCreationForm):
       return username
     
 
+class UpdateUserForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['username', 'email']
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        # Exclude the current user from the uniqueness check
+        if User.objects.exclude(pk=self.instance.pk).filter(email=email).exists():
+            raise forms.ValidationError("This email is already in use.")
+        return email
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if User.objects.exclude(pk=self.instance.pk).filter(username=username).exists():
+            raise forms.ValidationError("This username is already taken.")
+        return username

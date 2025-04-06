@@ -69,8 +69,18 @@
               <li><a class="dropdown-item" href="#">New project...</a></li>
               <li><a class="dropdown-item" href="#">Settings</a></li>
               <li><a class="dropdown-item" href="#">Profile</a></li>
+              <li><a class="dropdown-item" href="{% url 'password_change' %}">Change Password</a></li>
+              <li><a class="dropdown-item" href="{% url 'update_user' %}">Update User</a></li>
+
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="#">Sign out</a></li>
+
+              <li>
+                <form action="{% url 'logout' %}" method="post">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-danger">Sign Out</button>
+              </form></li>
+              
+            {% comment %} <li><a class="dropdown-item" href="#">Sign out</a></li> {% endcomment %}
             </ul>
           </div>
         </div>
