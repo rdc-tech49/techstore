@@ -16,6 +16,11 @@
   <div class="tab-content mt-3">
     <div class="tab-pane fade show active" id="received">
       <h1>Products received</h1>
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
       <table class="table table-bordered table-striped">
         <thead>
           <tr>
@@ -54,62 +59,68 @@
           <div class="alert alert-{{ message.tags }}">{{ message }}</div>
         {% endfor %}
       {% endif %}
+      
       <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
+        <input type="hidden" name="product_id" value="{{ edit_product.id|default:'' }}">
+        
         <div class="row mb-3">
           <div class="col">
             <label for="category">Product Category</label>
             <select name="category" id="category" class="form-select" required>
-              <option value="" disabled selected>Select Category</option>
+              <option value="" disabled {% if not edit_product %}selected{% endif %}>Select Category</option>
               {% for cat in categories %}
-                <option value="{{ cat.id }}">{{ cat.name }}</option>
+                <option value="{{ cat.id }}" {% if edit_product and cat.id == edit_product.category.id %}selected{% endif %}>{{ cat.name }}</option>
               {% endfor %}
             </select>
           </div>
           <div class="col">
             <label for="model">Product Model</label>
-            <input type="text" name="model" class="form-control" required>
+            <input type="text" name="model" class="form-control" required value="{{ edit_product.model|default:'' }}">
           </div>
         </div>
-    
+      
         <div class="row mb-3">
           <div class="col">
             <label for="quantity">Quantity</label>
-            <input type="number" name="quantity" class="form-control" required>
+            <input type="number" name="quantity" class="form-control" required value="{{ edit_product.quantity|default:'' }}">
           </div>
           <div class="col">
             <label for="purchased_date">Purchased Date</label>
-            <input type="date" name="purchased_date" class="form-control" required>
+            <input type="date" name="purchased_date" class="form-control" required value="{{ edit_product.purchased_date|date:'Y-m-d' }}">
           </div>
         </div>
-    
+      
         <div class="mb-3">
           <label for="reference_details">Reference Details</label>
-          <input type="text" name="reference_details" class="form-control" required>
+          <input type="text" name="reference_details" class="form-control" required value="{{ edit_product.reference_details|default:'' }}">
         </div>
-    
+      
         <div class="mb-3">
           <label for="description">Description</label>
-          <textarea name="description" class="form-control"></textarea>
+          <textarea name="description" class="form-control">{{ edit_product.description|default:'' }}</textarea>
         </div>
-    
+      
         <div class="mb-3">
           <label for="warranty_expiry_date">Warranty Expiry Date</label>
-          <input type="date" name="warranty_expiry_date" class="form-control">
+          <input type="date" name="warranty_expiry_date" class="form-control" value="{{ edit_product.warranty_expiry_date|date:'Y-m-d' }}">
         </div>
-    
+      
         <div class="mb-3">
           <label for="vendor_details">Vendor Details</label>
-          <textarea name="vendor_details" class="form-control"></textarea>
+          <textarea name="vendor_details" class="form-control">{{ edit_product.vendor_details|default:'' }}</textarea>
         </div>
-    
+      
         <div class="mb-3">
           <label for="delivery_challan">Upload Delivery Challan / RC</label>
           <input type="file" name="delivery_challan" class="form-control">
         </div>
-    
-        <button type="submit" name="form_type" value="add_product" class="btn btn-primary">Add Product</button>
+      
+        <button type="submit" name="form_type" value="add_product" class="btn btn-primary">
+          {% if edit_product %}Update Product{% else %}Add Product{% endif %}
+        </button>
       </form>
+      
     </div>
 
     

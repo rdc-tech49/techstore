@@ -94,57 +94,85 @@ def dashboard_view(request):
 
 @login_required
 def products_view(request):
-    # Handle category creation
-    if request.method == 'POST' and request.POST.get('form_type') == 'create_category':
-        category_name = request.POST.get('category_name', '').strip()
-        if category_name:
-            if not ProductCategory.objects.filter(name__iexact=category_name).exists():
-                ProductCategory.objects.create(name=category_name)
-                messages.success(request, "Product category created successfully.")
+    if request.method == 'POST':
+        form_type = request.POST.get('form_type')
+
+        # Category Creation
+        if form_type == 'create_category':
+            category_name = request.POST.get('category_name', '').strip()
+            if category_name:
+                if not ProductCategory.objects.filter(name__iexact=category_name).exists():
+                    ProductCategory.objects.create(name=category_name)
+                    messages.success(request, "Product category created successfully.")
+                else:
+                    messages.warning(request, "This category already exists.")
             else:
-                messages.warning(request, "This category already exists.")
-        else:
-            messages.error(request, "Category name cannot be empty.")
-        return HttpResponseRedirect(reverse('store_admin_products') + '#create')
+                messages.error(request, "Category name cannot be empty.")
+            return HttpResponseRedirect(reverse('store_admin_products') + '#create')
 
-    # Handle product addition
-    elif request.method == 'POST' and request.POST.get('form_type') == 'add_product':
-        category_id = request.POST.get('category')
-        model = request.POST.get('model', '').strip()
-        quantity = request.POST.get('quantity')
-        purchased_date = request.POST.get('purchased_date')
-        reference_details = request.POST.get('reference_details', '').strip()
-        description = request.POST.get('description', '')
-        warranty_expiry_date = request.POST.get('warranty_expiry_date') or None
-        vendor_details = request.POST.get('vendor_details', '')
-        delivery_challan = request.FILES.get('delivery_challan')
+        # Product Add or Update
+        elif form_type == 'add_product':
+            product_id = request.POST.get('product_id')
+            category_id = request.POST.get('category')
+            model = request.POST.get('model')
+            quantity = request.POST.get('quantity')
+            purchased_date = request.POST.get('purchased_date')
+            reference_details = request.POST.get('reference_details')
+            description = request.POST.get('description')
+            warranty_expiry_date = request.POST.get('warranty_expiry_date') or None
+            vendor_details = request.POST.get('vendor_details')
+            delivery_challan = request.FILES.get('delivery_challan')
 
-        if category_id and model and quantity and purchased_date and reference_details:
-            category = ProductCategory.objects.get(id=category_id)
-            Product.objects.create(
-                category=category,
-                model=model,
-                quantity=quantity,
-                purchased_date=purchased_date,
-                reference_details=reference_details,
-                description=description,
-                warranty_expiry_date=warranty_expiry_date,
-                vendor_details=vendor_details,
-                delivery_challan=delivery_challan
-            )
-            messages.success(request, "Product added successfully.")
-        else:
-            messages.error(request, "Please fill all the required fields.")
-        return HttpResponseRedirect(reverse('store_admin_products') + '#add')
+            if not all([category_id, model, quantity, purchased_date, reference_details]):
+                messages.error(request, "Please fill all the required fields.")
+                return HttpResponseRedirect(reverse('store_admin_products') + '#add')
 
+            category = get_object_or_404(ProductCategory, id=category_id)
+
+            if product_id:
+                # Update existing product
+                product = get_object_or_404(Product, id=product_id)
+                product.category = category
+                product.model = model
+                product.quantity = quantity
+                product.purchased_date = purchased_date
+                product.reference_details = reference_details
+                product.description = description
+                product.warranty_expiry_date = warranty_expiry_date
+                product.vendor_details = vendor_details
+                if delivery_challan:
+                    product.delivery_challan = delivery_challan
+                product.save()
+                messages.success(request, "Product updated successfully.")
+            else:
+                # Add new product
+                Product.objects.create(
+                    category=category,
+                    model=model,
+                    quantity=quantity,
+                    purchased_date=purchased_date,
+                    reference_details=reference_details,
+                    description=description,
+                    warranty_expiry_date=warranty_expiry_date,
+                    vendor_details=vendor_details,
+                    delivery_challan=delivery_challan
+                )
+                messages.success(request, "Product added successfully.")
+            return HttpResponseRedirect(reverse('store_admin_products') + '#received')
+
+    # GET request
     categories = ProductCategory.objects.all().order_by('id')
-    products = Product.objects.select_related('category').all().order_by('-id')
+    products = Product.objects.all().order_by('-id')
 
-    return render(request, 'techstore/store_admin_products.html', {
+    product_id_to_edit = request.GET.get('edit')
+    edit_product = Product.objects.filter(id=product_id_to_edit).first() if product_id_to_edit else None
+
+    context = {
         'categories': categories,
         'products': products,
-    })
-
+        'edit_product': edit_product,
+    }
+    return render(request, 'techstore/store_admin_products.html', context)
 
 
 def delete_product(request, product_id):
