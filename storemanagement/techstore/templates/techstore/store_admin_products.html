@@ -1,13 +1,13 @@
 {% extends 'techstore/storeadmin-page.html' %}
 {% block content %}
 <div class="container">
-  <h3>Products Purchased</h3>
-  <ul class="nav nav-tabs">
+  
+  <ul class="nav nav-tabs ">
     <li class="nav-item">
       <a class="nav-link active" data-bs-toggle="tab" href="#received">Products Received</a>
     </li>
-    <li class="nav-item">
-      <a class="nav-link" data-bs-toggle="tab" href="#add">Add Product</a>
+    <li class="nav-item ">
+      <a class="nav-link " data-bs-toggle="tab" href="#add">Add Product</a>
     </li>
     <li class="nav-item">
       <a class="nav-link" data-bs-toggle="tab" href="#create">Create Product Category</a>
@@ -15,14 +15,14 @@
   </ul>
   <div class="tab-content mt-3">
     <div class="tab-pane fade show active" id="received">
-      <h1>Products received</h1>
+      <h3>Products received</h3>
       {% if messages %}
         {% for message in messages %}
           <div class="alert alert-{{ message.tags }}">{{ message }}</div>
         {% endfor %}
       {% endif %}
-      <table class="table table-bordered table-striped">
-        <thead>
+      <table class="table table-bordered ">
+        <thead class="table-info">
           <tr>
             <th>ID</th>
             <th>Category</th>
@@ -54,6 +54,7 @@
     
 
     <div class="tab-pane fade" id="add">
+      <h3>Add Product</h3>
       {% if messages %}
         {% for message in messages %}
           <div class="alert alert-{{ message.tags }}">{{ message }}</div>
@@ -125,6 +126,7 @@
 
     
     <div class="tab-pane fade" id="create">
+      <h3>Create Product Category</h3>
       {% if messages %}
         {% for message in messages %}
           <div class="alert alert-{{ message.tags }}">{{ message }}</div>
@@ -143,8 +145,8 @@
       <hr>
 
   <h5 class="mt-4">Existing Categories</h5>
-  <table class="table table-bordered mt-2">
-    <thead class="table-light">
+  <table class="table table-bordered mt-2 ">
+    <thead class="table-info">
       <tr>
         <th scope="col">#</th>
         <th scope="col">Category Name</th>
