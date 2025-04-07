@@ -1,0 +1,79 @@
+{% extends 'techstore/storeadmin-page.html' %}
+{% load static %}
+{% block content %}
+
+<div class="container mt-4">
+  <ul class="nav nav-tabs" id="customerTabs">
+    <li class="nav-item">
+      <a class="nav-link {% if not edit_user %}active{% endif %}" data-bs-toggle="tab" href="#list">Customer List</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if edit_user %}active{% endif %}" data-bs-toggle="tab" href="#create">Create / Edit Customer</a>
+    </li>
+  </ul>
+  
+  
+  <div class="tab-content mt-3">
+    <!-- Users List Tab -->
+<div class="tab-pane fade {% if not edit_user %}show active{% endif %}" id="list">
+  <h3>Users List</h3>
+  {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+  <table class="table table-bordered">
+    <thead class="table-info">
+      <tr>
+        <th>ID</th>
+        <th>Username</th>
+        <th>Email</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+        <tr>
+          <td>{{ user.id }}</td>
+          <td>{{ user.username }}</td>
+          <td>{{ user.email }}</td>
+          <td>
+            <a href="?edit_user={{ user.id }}#create" class="btn btn-sm btn-warning">Edit</a>
+            <a href="{% url 'delete_user' user.id %}" onclick="return confirm('Are you sure?')" class="btn btn-sm btn-danger">Delete</a>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Create/Edit User Tab -->
+<div class="tab-pane fade {% if edit_user %}show active{% endif %}" id="create">
+  <h3>{% if edit_user %}Edit User{% else %}Create User{% endif %}</h3>
+  <form method="POST">
+    {% csrf_token %}
+    <input type="hidden" name="form_type" value="add_user">
+    {% if edit_user %}
+      <input type="hidden" name="user_id" value="{{ edit_user.id }}">
+    {% endif %}
+    <div class="mb-3">
+      <label>Username</label>
+      <input type="text" name="username" value="{{ edit_user.username|default_if_none:'' }}" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label>Email</label>
+      <input type="email" name="email" value="{{ edit_user.email|default_if_none:'' }}" class="form-control">
+    </div>
+    <div class="mb-3">
+      <label>Password {% if edit_user %}(leave blank to keep current password){% endif %}</label>
+      <input type="password" name="password" class="form-control" {% if not edit_user %}required{% endif %}>
+    </div>
+    <button type="submit" class="btn btn-primary">{% if edit_user %}Update{% else %}Create{% endif %}</button>
+  </form>
+</div>
+
+  </div>
+  
+    
+</div>
+{% endblock %}

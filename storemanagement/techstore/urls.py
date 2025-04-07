@@ -27,6 +27,9 @@ urlpatterns = [
     path('store-admin/home/', views.home_view, name='store_admin_home'),
     path('store-admin/dashboard/', views.dashboard_view, name='store_admin_dashboard'),
     path('store-admin/products/', views.products_view, name='store_admin_products'),
+    path('store-admin/users/', views.customers_view, name='store_admin_customers'),
+    path('store-admin/users/delete/<int:user_id>/', views.delete_user, name='delete_user'),
+
     
     # add/edit product 
     path('store-admin/products/edit/<int:product_id>/', views.edit_product, name='edit_product'),

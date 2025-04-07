@@ -8,7 +8,7 @@ from django.contrib.auth.views import PasswordChangeView
 from django.urls import reverse_lazy, reverse
 from django.contrib.auth.decorators import login_required
 # Create your views here.
-
+from django.contrib.auth.models import User
 from .models import ProductCategory, Product
 from django.http import HttpResponseRedirect
 from django.core.files.storage import FileSystemStorage
@@ -91,6 +91,58 @@ def home_view(request):
 @login_required
 def dashboard_view(request):
     return render(request, 'techstore/store_admin_dashboard.html')
+
+@login_required
+def customers_view(request):
+    if request.method == 'POST':
+        form_type = request.POST.get('form_type')
+
+        if form_type == 'add_user':
+            user_id = request.POST.get('user_id')
+            username = request.POST.get('username').strip()
+            email = request.POST.get('email')
+            password = request.POST.get('password')
+
+            if user_id:
+                # Update existing user
+                user = get_object_or_404(User, id=user_id)
+                user.username = username
+                user.email = email
+                
+                if password:
+                    user.set_password(password)
+                user.save()
+                messages.success(request, "User updated successfully.")
+                return HttpResponseRedirect(reverse('store_admin_customers') + '#list')
+            else:
+                # Create new user
+                if User.objects.filter(username=username).exists():
+                    messages.warning(request, "Username already exists.")
+                else:
+                    user = User.objects.create_user(
+                        username=username,
+                        email=email,
+                        password=password
+                    )
+                    messages.success(request, "User created successfully.")
+                    return HttpResponseRedirect(reverse('store_admin_customers') + '#list')
+            return redirect(reverse('store_admin_customers') + '#list')
+
+    users = User.objects.filter(is_superuser=False).order_by('-id')
+    edit_user_id = request.GET.get('edit_user')
+    edit_user = User.objects.filter(id=edit_user_id).first() if edit_user_id else None
+
+    return render(request, 'techstore/store_admin_customers.html', {
+        'users': users,
+        'edit_user': edit_user,
+    })
+
+def delete_user(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+    user.delete()
+    messages.success(request, "User deleted successfully.")
+    return redirect(reverse('store_admin_customers') + '#list')
+
 
 @login_required
 def products_view(request):
