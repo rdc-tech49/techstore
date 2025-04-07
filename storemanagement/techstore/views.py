@@ -4,9 +4,12 @@ from django.contrib import messages
 from django.utils.safestring import mark_safe
 from .forms import CustomUserCreationForm, UpdateUserForm
 from django.contrib.auth.views import PasswordChangeView
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from django.contrib.auth.decorators import login_required
 # Create your views here.
+
+from .models import ProductCategory
+from django.http import HttpResponseRedirect
 
 
 
@@ -14,18 +17,28 @@ def home(request):
     if request.method == 'POST':
         username = request.POST['username']
         password = request.POST['password']
-        # Authenticate
         user = authenticate(request, username=username, password=password)
+
         if user is not None:
             login(request, user)
-            # messages.success(request, "You Have Been Logged In!")
-            return redirect('store_admin')  # Redirect to the store admin page after login
+
+            if user.is_superuser:
+                return redirect('store_admin')  # URL name for admin dashboard
+            else:
+                return redirect('store_user')   # URL name for regular user dashboard
         else:
-            messages.success(request, mark_safe("! Invalid Username or Password. <br> Try Again..."))
+            messages.error(request, mark_safe("⚠️ Invalid Username or Password.<br>Try Again..."))
             return redirect('home')
     else:
-        return render(request, "techstore/home.html",{})
+        return render(request, "techstore/home.html", {})
     
+@login_required
+def store_admin_dashboard(request):
+    return render(request, 'techstore/storeadmin-page.html')
+
+@login_required
+def store_user_dashboard(request):
+    return render(request, 'techstore/storeuser-page.html') 
 
 def signup(request):
     if request.method == "POST":
@@ -80,4 +93,20 @@ def dashboard_view(request):
 
 @login_required
 def products_view(request):
-    return render(request, 'techstore/store_admin_products.html')
+    if request.method == 'POST':
+        category_name = request.POST.get('category_name', '').strip()
+        if category_name:
+            if not ProductCategory.objects.filter(name__iexact=category_name).exists():
+                ProductCategory.objects.create(name=category_name)
+                messages.success(request, "Product category created successfully.")
+            else:
+                messages.warning(request, "This category already exists.")
+        else:
+            messages.error(request, "Category name cannot be empty.")
+
+        # Redirect to the 'Create Product Category' tab
+        return HttpResponseRedirect(reverse('store_admin_products') + '#create')
+
+    categories = ProductCategory.objects.all().order_by('id')
+    return render(request, 'techstore/store_admin_products.html', {'categories': categories})
+

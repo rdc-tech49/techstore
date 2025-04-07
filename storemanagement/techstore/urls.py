@@ -7,6 +7,11 @@ from .views import CustomPasswordChangeView, update_user
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path('store-admin/', views.store_admin_dashboard, name='store_admin'),
+    path('store-user/', views.store_user_dashboard, name='store_user'),
+
+
+
     path('signup/', views.signup, name='signup'),
     path('store_admin/', views.store_admin, name='store_admin'),
 
