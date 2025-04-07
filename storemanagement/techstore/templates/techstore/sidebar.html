@@ -33,7 +33,7 @@
         </a>
       </li>
       <li>
-        <a href="{% url 'store_admin_customers' %}" class="nav-link text-white d-flex align-items-center">
+        <a href="{% url 'store_admin_customers' %}" class="nav-link d-flex align-items-center {% if request.resolver_match.url_name == 'store_admin_customers' %}active{% else %}text-white{% endif %}">
           <i class="bi bi-person-circle"></i>
           <span class="ms-2">Customers</span>
         </a>
