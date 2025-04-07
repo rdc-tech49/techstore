@@ -98,17 +98,29 @@ def products_view(request):
         form_type = request.POST.get('form_type')
 
         # Category Creation
-        if form_type == 'create_category':
+        if form_type == 'add_category':
             category_name = request.POST.get('category_name', '').strip()
+            edit_id = request.POST.get('edit_id')
+
             if category_name:
-                if not ProductCategory.objects.filter(name__iexact=category_name).exists():
-                    ProductCategory.objects.create(name=category_name)
-                    messages.success(request, "Product category created successfully.")
+                if edit_id:
+                    # Update existing category
+                    category = get_object_or_404(ProductCategory, id=edit_id)
+                    category.name = category_name
+                    category.save()
+                    messages.success(request, "Category updated successfully.")
                 else:
-                    messages.warning(request, "This category already exists.")
+                    # Add new category
+                    if not ProductCategory.objects.filter(name__iexact=category_name).exists():
+                        ProductCategory.objects.create(name=category_name)
+                        messages.success(request, "Product category created successfully.")
+                        return HttpResponseRedirect(reverse('store_admin_products') + '#create')
+                    else:
+                        messages.warning(request, "This category already exists.")
+                        return HttpResponseRedirect(reverse('store_admin_products') + '#create')
             else:
                 messages.error(request, "Category name cannot be empty.")
-            return HttpResponseRedirect(reverse('store_admin_products') + '#create')
+                return HttpResponseRedirect(reverse('store_admin_products') + '#create')
 
         # Product Add or Update
         elif form_type == 'add_product':

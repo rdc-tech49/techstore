@@ -21,7 +21,10 @@
           <div class="alert alert-{{ message.tags }}">{{ message }}</div>
         {% endfor %}
       {% endif %}
-      <table class="table table-bordered ">
+      <div class="mb-3">
+        <input type="text" id="productFilter" class="form-control" placeholder="Search by Category, Model, or...">
+      </div>
+      <table class="table table-bordered" id="productsTable" >
         <thead class="table-info">
           <tr>
             <th>ID</th>
@@ -133,23 +136,32 @@
         {% endfor %}
       {% endif %}
     
-      <form method="post">
+      <form method="POST" action="{% url 'store_admin_products' %}">
         {% csrf_token %}
+        <input type="hidden" name="edit_id" value="{{ request.GET.edit_category }}">
         <div class="mb-3">
-          <label for="categoryName" class="form-label">Product Category Name</label>
-          <input type="text" class="form-control" id="categoryName" name="category_name" placeholder="Enter category name" required>
+          <label for="category_name">Product Category Name</label>
+          <input type="text" name="category_name" id="category_name" class="form-control"
+                 value="{{ request.GET.category_name|default:'' }}" required>
         </div>
-        <button type="submit" name="form_type" value="create_category" class="btn btn-primary">Create Category</button>
+        <button type="submit" name="form_type" value="add_category" class="btn btn-success">
+          {% if request.GET.edit_category %}Update{% else %}Add{% endif %}
+        </button>
       </form>
+      
 
       <hr>
 
   <h5 class="mt-4">Existing Categories</h5>
-  <table class="table table-bordered mt-2 ">
+  <div class="mb-3">
+    <input type="text" id="categoryFilter" class="form-control" placeholder="Search categories...">
+  </div>
+  <table class="table table-bordered mt-2" id="categoryTable">
     <thead class="table-info">
       <tr>
         <th scope="col">#</th>
         <th scope="col">Category Name</th>
+        <th scope="col">Action</th>
       </tr>
     </thead>
     <tbody>
@@ -157,14 +169,18 @@
       <tr>
         <td>{{ forloop.counter }}</td>
         <td>{{ category.name }}</td>
+        <td>
+          <a href="?edit_category={{ category.id }}&category_name={{ category.name }}#create" class="btn btn-sm btn-warning">Edit</a>
+        </td>
       </tr>
       {% empty %}
       <tr>
-        <td colspan="2">No categories added yet.</td>
+        <td colspan="3">No categories added yet.</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  
     </div>
     
   </div>
@@ -181,4 +197,31 @@
     }
   });
 </script>
+
+{% comment %} table 1 filter  {% endcomment %}
+<script>
+  document.getElementById('productFilter').addEventListener('keyup', function() {
+    let filter = this.value.toLowerCase();
+    let rows = document.querySelectorAll('#productsTable tbody tr');
+
+    rows.forEach(row => {
+      let text = row.textContent.toLowerCase();
+      row.style.display = text.includes(filter) ? '' : 'none';
+    });
+  });
+</script>
+
+{% comment %} second table filter  {% endcomment %}
+<script>
+  document.getElementById('categoryFilter').addEventListener('keyup', function () {
+    let filter = this.value.toLowerCase();
+    let rows = document.querySelectorAll('#categoryTable tbody tr');
+
+    rows.forEach(row => {
+      let text = row.textContent.toLowerCase();
+      row.style.display = text.includes(filter) ? '' : 'none';
+    });
+  });
+</script>
+
 {% endblock %}
