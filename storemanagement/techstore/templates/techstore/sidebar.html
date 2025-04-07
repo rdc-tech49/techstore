@@ -1,0 +1,106 @@
+{% load static %}
+<section class="d-flex flex-nowrap" id="sidebar">      
+  <div class="d-flex flex-column flex-shrink-0 p-3 text-bg-dark" style="width: 250px;">
+    <a href="" class="d-flex align-items-center  mb-1 mb-md-0 me-md-auto text-white text-decoration-none">
+      <img src="{% static 'techstore/images/tnp.png' %}" alt="Logo" width="40" height="40" class="me-4">
+      <span class="fs-4">Tech Store</span>
+    </a>
+    <hr>
+    {% comment %} <ul class="nav nav-pills flex-column mb-auto">
+      <li class="nav-item ">
+        <a href="{% url 'store_admin_home' %}" class="nav-link active d-flex  align-items-center" aria-current="page">
+          <i class="bi bi-house-door me-2"></i>
+          <span>Home</span>
+        </a>
+      </li>
+      <li>
+        <a href="{% url 'store_admin_dashboard' %}" class="nav-link text-white d-flex align-items-center">
+          <i class="bi bi-speedometer2"></i>
+          <span class="ms-2">Dashboard</span>
+        </a>
+      </li>
+      <li>
+        <a href="#" class="nav-link text-white d-flex align-items-center">
+          <i class="bi bi-table "></i>
+          <span class="ms-2">Orders</span>
+          
+        </a>
+      </li>
+      <li>
+        <a href="{% url 'store_admin_products' %}" class="nav-link text-white d-flex align-items-center">
+          <i class="bi bi-grid"></i>
+          <span class="ms-2">Products</span>
+          
+        </a>
+      </li>
+      <li>
+        <a href="#" class="nav-link text-white d-flex align-items-center">
+          <i class="bi bi-person-circle"></i>
+          <span class="ms-2">Customers</span>
+          
+          
+        </a>
+      </li>
+    </ul> {% endcomment %}
+    <ul class="nav nav-pills flex-column mb-auto">
+      <li class="nav-item">
+        <a href="{% url 'store_admin_home' %}" class="nav-link d-flex align-items-center {% if request.resolver_match.url_name == 'store_admin_home' %}active{% else %}text-white{% endif %}">
+          <i class="bi bi-house-door me-2"></i>
+          <span>Home</span>
+        </a>
+      </li>
+      <li>
+        <a href="{% url 'store_admin_dashboard' %}" class="nav-link d-flex align-items-center {% if request.resolver_match.url_name == 'store_admin_dashboard' %}active{% else %}text-white{% endif %}">
+          <i class="bi bi-speedometer2"></i>
+          <span class="ms-2">Dashboard</span>
+        </a>
+      </li>
+      <li>
+        <a href="#" class="nav-link text-white d-flex align-items-center">
+          <i class="bi bi-table"></i>
+          <span class="ms-2">Orders</span>
+        </a>
+      </li>
+      <li>
+        <a href="{% url 'store_admin_products' %}" class="nav-link d-flex align-items-center {% if request.resolver_match.url_name == 'store_admin_products' %}active{% else %}text-white{% endif %}">
+          <i class="bi bi-grid"></i>
+          <span class="ms-2">Products</span>
+        </a>
+      </li>
+      <li>
+        <a href="#" class="nav-link text-white d-flex align-items-center">
+          <i class="bi bi-person-circle"></i>
+          <span class="ms-2">Customers</span>
+        </a>
+      </li>
+    </ul>
+    
+
+
+
+    <hr>
+    <div class="dropdown">
+      <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+        <img src="https://github.com/mdo.png" alt="" width="32" height="32" class="rounded-circle me-2">
+        <strong>Admin</strong>
+      </a>
+      <ul class="dropdown-menu dropdown-menu-dark text-small shadow">
+        <li><a class="dropdown-item" href="#">New project...</a></li>
+        <li><a class="dropdown-item" href="#">Settings</a></li>
+        <li><a class="dropdown-item" href="#">Profile</a></li>
+        <li><a class="dropdown-item" href="{% url 'password_change' %}">Change Password</a></li>
+        <li><a class="dropdown-item" href="{% url 'update_user' %}">Update User</a></li>
+
+        <li><hr class="dropdown-divider"></li>
+
+        <li>
+          <form action="{% url 'logout' %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Sign Out</button>
+        </form></li>
+        
+      {% comment %} <li><a class="dropdown-item" href="#">Sign out</a></li> {% endcomment %}
+      </ul>
+    </div>
+  </div>
+</section>

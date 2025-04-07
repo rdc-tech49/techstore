@@ -18,6 +18,10 @@ urlpatterns = [
     
     path('profile/update/', update_user, name='update_user'),
     path('logout/', views.logout_view, name='logout'),
+
+    path('store-admin/home/', views.home_view, name='store_admin_home'),
+    path('store-admin/dashboard/', views.dashboard_view, name='store_admin_dashboard'),
+    path('store-admin/products/', views.products_view, name='store_admin_products'),
     
 
 

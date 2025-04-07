@@ -69,3 +69,15 @@ def logout_view(request):
     logout(request)
     messages.success(request, "You have been logged out.")
     return redirect('home')  # Replace 'login' with the name or path to your login page
+
+@login_required
+def home_view(request):
+    return render(request, 'techstore/store_admin_home.html')
+
+@login_required
+def dashboard_view(request):
+    return render(request, 'techstore/store_admin_dashboard.html')
+
+@login_required
+def products_view(request):
+    return render(request, 'techstore/store_admin_products.html')

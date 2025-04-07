@@ -1,0 +1,18 @@
+{% extends 'techstore/storeadmin-page.html' %}
+{% block content %}
+<div class="container">
+  <h3>Products Purchased</h3>
+  <ul class="nav nav-tabs">
+    <li class="nav-item">
+      <a class="nav-link active" data-bs-toggle="tab" href="#received">Products Received</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#add">Add Product</a>
+    </li>
+  </ul>
+  <div class="tab-content mt-3">
+    <div class="tab-pane fade show active" id="received">...received content...</div>
+    <div class="tab-pane fade" id="add">...add content...</div>
+  </div>
+</div>
+{% endblock %}
