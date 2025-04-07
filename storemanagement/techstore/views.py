@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
@@ -8,9 +9,9 @@ from django.urls import reverse_lazy, reverse
 from django.contrib.auth.decorators import login_required
 # Create your views here.
 
-from .models import ProductCategory
+from .models import ProductCategory, Product
 from django.http import HttpResponseRedirect
-
+from django.core.files.storage import FileSystemStorage
 
 
 def home(request):
@@ -93,7 +94,8 @@ def dashboard_view(request):
 
 @login_required
 def products_view(request):
-    if request.method == 'POST':
+    # Handle category creation
+    if request.method == 'POST' and request.POST.get('form_type') == 'create_category':
         category_name = request.POST.get('category_name', '').strip()
         if category_name:
             if not ProductCategory.objects.filter(name__iexact=category_name).exists():
@@ -103,10 +105,79 @@ def products_view(request):
                 messages.warning(request, "This category already exists.")
         else:
             messages.error(request, "Category name cannot be empty.")
-
-        # Redirect to the 'Create Product Category' tab
         return HttpResponseRedirect(reverse('store_admin_products') + '#create')
 
-    categories = ProductCategory.objects.all().order_by('id')
-    return render(request, 'techstore/store_admin_products.html', {'categories': categories})
+    # Handle product addition
+    elif request.method == 'POST' and request.POST.get('form_type') == 'add_product':
+        category_id = request.POST.get('category')
+        model = request.POST.get('model', '').strip()
+        quantity = request.POST.get('quantity')
+        purchased_date = request.POST.get('purchased_date')
+        reference_details = request.POST.get('reference_details', '').strip()
+        description = request.POST.get('description', '')
+        warranty_expiry_date = request.POST.get('warranty_expiry_date') or None
+        vendor_details = request.POST.get('vendor_details', '')
+        delivery_challan = request.FILES.get('delivery_challan')
 
+        if category_id and model and quantity and purchased_date and reference_details:
+            category = ProductCategory.objects.get(id=category_id)
+            Product.objects.create(
+                category=category,
+                model=model,
+                quantity=quantity,
+                purchased_date=purchased_date,
+                reference_details=reference_details,
+                description=description,
+                warranty_expiry_date=warranty_expiry_date,
+                vendor_details=vendor_details,
+                delivery_challan=delivery_challan
+            )
+            messages.success(request, "Product added successfully.")
+        else:
+            messages.error(request, "Please fill all the required fields.")
+        return HttpResponseRedirect(reverse('store_admin_products') + '#add')
+
+    categories = ProductCategory.objects.all().order_by('id')
+    products = Product.objects.select_related('category').all().order_by('-id')
+
+    return render(request, 'techstore/store_admin_products.html', {
+        'categories': categories,
+        'products': products,
+    })
+
+
+
+def delete_product(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+    product.delete()
+    messages.success(request, "Product deleted successfully.")
+    return redirect(reverse('store_admin_products') + '#received')
+
+
+def edit_product(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+
+    if request.method == 'POST':
+        category_id = request.POST.get('category')
+        product.model = request.POST.get('model')
+        product.quantity = request.POST.get('quantity')
+        product.purchased_date = request.POST.get('purchased_date')
+        product.reference_details = request.POST.get('reference_details')
+        product.description = request.POST.get('description')
+        product.warranty_expiry_date = request.POST.get('warranty_expiry_date') or None
+        product.vendor_details = request.POST.get('vendor_details')
+        if request.FILES.get('delivery_challan'):
+            product.delivery_challan = request.FILES.get('delivery_challan')
+        product.category_id = category_id
+        product.save()
+
+        messages.success(request, "Product updated successfully.")
+        return redirect(reverse('store_admin_products') + '#received')
+
+    categories = ProductCategory.objects.all()
+    products = Product.objects.select_related('category').all()
+    return render(request, 'techstore/store_admin_products.html', {
+        'edit_product': product,
+        'categories': categories,
+        'products': products
+    })

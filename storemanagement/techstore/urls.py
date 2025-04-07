@@ -28,6 +28,9 @@ urlpatterns = [
     path('store-admin/dashboard/', views.dashboard_view, name='store_admin_dashboard'),
     path('store-admin/products/', views.products_view, name='store_admin_products'),
     
+    # add/edit product 
+    path('store-admin/products/edit/<int:product_id>/', views.edit_product, name='edit_product'),
+    path('store-admin/products/delete/<int:product_id>/', views.delete_product, name='delete_product'),
 
 
 

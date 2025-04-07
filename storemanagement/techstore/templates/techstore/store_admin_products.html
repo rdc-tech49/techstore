@@ -14,8 +14,105 @@
     </li>
   </ul>
   <div class="tab-content mt-3">
-    <div class="tab-pane fade show active" id="received">...received content...</div>
-    <div class="tab-pane fade" id="add">...add content...</div>
+    <div class="tab-pane fade show active" id="received">
+      <h1>Products received</h1>
+      <table class="table table-bordered table-striped">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Category</th>
+            <th>Model</th>
+            <th>Quantity</th>
+            <th>Purchased Date</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for product in products %}
+            <tr>
+              <td>{{ product.id }}</td>
+              <td>{{ product.category.name }}</td>
+              <td>{{ product.model }}</td>
+              <td>{{ product.quantity }}</td>
+              <td>{{ product.purchased_date }}</td>
+              <td>
+                <a href="{% url 'edit_product' product.id %}#add" class="btn btn-sm btn-warning">Edit</a>
+                <a href="{% url 'delete_product' product.id %}" class="btn btn-sm btn-danger"
+                   onclick="return confirm('Are you sure you want to delete this product?');">Delete</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      
+    </div>
+    
+
+    <div class="tab-pane fade" id="add">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+      <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="row mb-3">
+          <div class="col">
+            <label for="category">Product Category</label>
+            <select name="category" id="category" class="form-select" required>
+              <option value="" disabled selected>Select Category</option>
+              {% for cat in categories %}
+                <option value="{{ cat.id }}">{{ cat.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col">
+            <label for="model">Product Model</label>
+            <input type="text" name="model" class="form-control" required>
+          </div>
+        </div>
+    
+        <div class="row mb-3">
+          <div class="col">
+            <label for="quantity">Quantity</label>
+            <input type="number" name="quantity" class="form-control" required>
+          </div>
+          <div class="col">
+            <label for="purchased_date">Purchased Date</label>
+            <input type="date" name="purchased_date" class="form-control" required>
+          </div>
+        </div>
+    
+        <div class="mb-3">
+          <label for="reference_details">Reference Details</label>
+          <input type="text" name="reference_details" class="form-control" required>
+        </div>
+    
+        <div class="mb-3">
+          <label for="description">Description</label>
+          <textarea name="description" class="form-control"></textarea>
+        </div>
+    
+        <div class="mb-3">
+          <label for="warranty_expiry_date">Warranty Expiry Date</label>
+          <input type="date" name="warranty_expiry_date" class="form-control">
+        </div>
+    
+        <div class="mb-3">
+          <label for="vendor_details">Vendor Details</label>
+          <textarea name="vendor_details" class="form-control"></textarea>
+        </div>
+    
+        <div class="mb-3">
+          <label for="delivery_challan">Upload Delivery Challan / RC</label>
+          <input type="file" name="delivery_challan" class="form-control">
+        </div>
+    
+        <button type="submit" name="form_type" value="add_product" class="btn btn-primary">Add Product</button>
+      </form>
+    </div>
+
+    
     <div class="tab-pane fade" id="create">
       {% if messages %}
         {% for message in messages %}
@@ -29,7 +126,7 @@
           <label for="categoryName" class="form-label">Product Category Name</label>
           <input type="text" class="form-control" id="categoryName" name="category_name" placeholder="Enter category name" required>
         </div>
-        <button type="submit" class="btn btn-primary">Create Category</button>
+        <button type="submit" name="form_type" value="create_category" class="btn btn-primary">Create Category</button>
       </form>
 
       <hr>
