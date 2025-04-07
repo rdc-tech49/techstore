@@ -15,21 +15,7 @@
 }
 
 
-.nav-tabs .nav-link {
-  color: gray; /* Inactive tab text color */
-  background-color: #e9ecef; /* Inactive tab background */
-  border: 1px solid #dee2e6;
-}
 
-.nav-tabs .nav-link.active {
-  color: white !important;
-  background-color: #0d6efd !important; /* Bootstrap blue */
-  border-color: #dee2e6 #dee2e6 #fff;
-}
-
-.nav-tabs .nav-link:hover {
-  color: #0d6efd;
-}
 
 
 

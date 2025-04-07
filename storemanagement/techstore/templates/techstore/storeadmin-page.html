@@ -17,19 +17,19 @@
 
     <style>
       .nav-tabs .nav-link {
-        color: gray; /* Inactive tab text color */
-        {% comment %} background-color: #e9ecef; /* Inactive tab background */
-        border: 1px solid #dee2e6; {% endcomment %}
+        color: grey; /* Inactive tab text color */
+        background-color:rgb(253, 254, 255); /* Inactive tab background */
+        border: 1px solid #dee2e6; 
       }
     
       .nav-tabs .nav-link.active {
-        color:rgb(247, 249, 252) !important;
+        
         background-color: #0d6efd !important; /* Bootstrap blue */
         
       }
     
        .nav-tabs .nav-link:hover {
-        color: #0d6efd;
+        color:#0d6efd;
       }  
     </style>
     
@@ -45,6 +45,6 @@
       {% endblock %}
     </div>
     
-    
+    <script src="{% static 'techstore/script/main.js' %}"></script> 
   </body>
 </html>
