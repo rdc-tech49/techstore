@@ -1,0 +1,124 @@
+{% extends 'techstore/storeadmin-page.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+  <ul class="nav nav-tabs" id="ordersTab" role="tablist">
+    <li class="nav-item">
+      <a class="nav-link active" id="stock-tab" data-bs-toggle="tab" href="#stock" role="tab">Stock Summary</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" id="create-tab" data-bs-toggle="tab" href="#create" role="tab">Create Supply Order</a>
+    </li>
+  </ul>
+  
+  <div class="tab-content mt-3">
+    <div class="tab-pane fade show active" id="stock" role="tabpanel">
+      <p>Stock Summary (coming soon)</p>
+    </div>
+  
+    <div class="tab-pane fade" id="create" role="tabpanel">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+      <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="form_type" value="create_order">
+  
+        <div class="row mb-3">
+          <div class="col">
+            <label>Product Category</label>
+            <select name="category" id="categorySelect" class="form-select" required>
+              <option value="" disabled selected>Select Category</option>
+              {% for cat in categories %}
+                <option value="{{ cat.id }}">{{ cat.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col">
+            <label>Model</label>
+            <select name="model" id="modelSelect" class="form-select" required>
+              <option value="" disabled selected>Select Model</option>
+            </select>
+          </div>
+        </div>
+  
+        <div class="row mb-3">
+          <div class="col">
+            <label>
+              Quantity Supplied
+              <span id="availableQty" class="text-muted small"></span>
+            </label>
+            <select name="quantity" id="quantitySelect" class="form-select" required>
+              <option value="" disabled selected>Select Quantity</option>
+            </select>
+          </div>
+          <div class="col">
+            <label>Supplied Date</label>
+            <input type="date" name="supplied_date" class="form-control" required>
+          </div>
+        </div>
+  
+        <div class="mb-3">
+          <label>Supplied To</label>
+          <select name="supplied_to" class="form-select" required>
+            <option value="" disabled selected>Select User</option>
+            {% for user in users %}
+              <option value="{{ user.id }}">{{ user.username }}</option>
+            {% endfor %}
+          </select>
+        </div>
+  
+        <div class="mb-3">
+          <label>Received Person Name</label>
+          <input type="text" name="received_person_name" class="form-control" required>
+        </div>
+  
+        <div class="mb-3">
+          <label>IV Number</label>
+          <input type="text" name="iv_number" class="form-control" required>
+        </div>
+  
+        <button type="submit" class="btn btn-primary">Create Order</button>
+      </form>
+    </div>
+  </div>
+  
+  <script>
+    const categorySelect = document.getElementById('categorySelect');
+    const modelSelect = document.getElementById('modelSelect');
+    const quantitySelect = document.getElementById('quantitySelect');
+    const availableQty = document.getElementById('availableQty');
+  
+    categorySelect.addEventListener('change', function () {
+      const categoryId = this.value;
+      modelSelect.innerHTML = '<option value="" disabled selected>Loading models...</option>';
+      fetch(`/get-models-by-category/${categoryId}/`)
+        .then(res => res.json())
+        .then(data => {
+          modelSelect.innerHTML = '<option value="" disabled selected>Select Model</option>';
+          data.forEach(model => {
+            modelSelect.innerHTML += `<option value="${model.id}" data-qty="${model.quantity}">${model.model}</option>`;
+          });
+        });
+    });
+  
+    modelSelect.addEventListener('change', function () {
+      const selectedOption = this.options[this.selectedIndex];
+      const available = selectedOption.getAttribute('data-qty');
+      availableQty.innerText = `(Available: ${available})`;
+  
+      quantitySelect.innerHTML = '<option value="" disabled selected>Select Quantity</option>';
+      for (let i = 1; i <= parseInt(available); i++) {
+        quantitySelect.innerHTML += `<option value="${i}">${i}</option>`;
+      }
+    });
+  </script>
+  
+
+
+
+</div>
+{% endblock %}

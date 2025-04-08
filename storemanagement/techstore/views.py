@@ -1,5 +1,5 @@
-from django.shortcuts import get_object_or_404
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, render, redirect
+ 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.utils.safestring import mark_safe
@@ -9,8 +9,8 @@ from django.urls import reverse_lazy, reverse
 from django.contrib.auth.decorators import login_required
 # Create your views here.
 from django.contrib.auth.models import User
-from .models import ProductCategory, Product
-from django.http import HttpResponseRedirect
+from .models import ProductCategory, Product, SupplyOrder
+from django.http import HttpResponseRedirect, JsonResponse
 from django.core.files.storage import FileSystemStorage
 
 
@@ -273,3 +273,54 @@ def edit_product(request, product_id):
         'categories': categories,
         'products': products
     })
+
+
+def orders_view(request):
+    categories = ProductCategory.objects.all()
+    users = User.objects.all()
+
+    if request.method == 'POST':
+        form_type = request.POST.get('form_type')
+        if form_type == 'create_order':
+            category_id = request.POST.get('category')
+            model_id = request.POST.get('model')
+            quantity = request.POST.get('quantity')
+            supplied_date = request.POST.get('supplied_date')
+            supplied_to_id = request.POST.get('supplied_to')
+            received_person_name = request.POST.get('received_person_name')
+            iv_number = request.POST.get('iv_number')
+
+            if not all([category_id, model_id, quantity, supplied_date, supplied_to_id, received_person_name, iv_number]):
+                messages.error(request, "Please fill all required fields.")
+                return HttpResponseRedirect(reverse('store_admin_orders') + '#create')
+
+            model = get_object_or_404(Product, id=model_id)
+
+            if int(quantity) > model.quantity:
+                messages.error(request, "Supplied quantity exceeds available stock.")
+                return HttpResponseRedirect(reverse('store_admin_orders') + '#create')
+
+            SupplyOrder.objects.create(
+                category_id=category_id,
+                model_id=model_id,
+                quantity_supplied=quantity,
+                supplied_date=supplied_date,
+                supplied_to_id=supplied_to_id,
+                received_person_name=received_person_name,
+                iv_number=iv_number
+            )
+
+            model.quantity -= int(quantity)
+            model.save()
+
+            messages.success(request, "Supply order created successfully.")
+            return HttpResponseRedirect(reverse('store_admin_orders') + '#create')
+
+    return render(request, 'techstore/store_admin_supplyorders.html', {
+        'categories': categories,
+        'users': users
+    })
+
+def get_models_by_category(request, category_id):
+    models = Product.objects.filter(category_id=category_id).values('id', 'model', 'quantity')
+    return JsonResponse(list(models), safe=False)

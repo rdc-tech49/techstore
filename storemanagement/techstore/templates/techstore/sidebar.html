@@ -21,15 +21,15 @@
         </a>
       </li>
       <li>
-        <a href="#" class="nav-link text-white d-flex align-items-center">
+        <a href="{% url 'store_admin_orders' %}" class="nav-link d-flex align-items-center {% if request.resolver_match.url_name == 'store_admin_orders' %}active{% else %}text-white{% endif %}">
           <i class="bi bi-table"></i>
-          <span class="ms-2">Orders</span>
+          <span class="ms-2">Supply Orders</span>
         </a>
       </li>
       <li>
         <a href="{% url 'store_admin_products' %}" class="nav-link d-flex align-items-center {% if request.resolver_match.url_name == 'store_admin_products' %}active{% else %}text-white{% endif %}">
           <i class="bi bi-grid"></i>
-          <span class="ms-2">Products</span>
+          <span class="ms-2">Inventory</span>
         </a>
       </li>
       <li>

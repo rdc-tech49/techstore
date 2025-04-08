@@ -35,6 +35,9 @@ urlpatterns = [
     path('store-admin/products/edit/<int:product_id>/', views.edit_product, name='edit_product'),
     path('store-admin/products/delete/<int:product_id>/', views.delete_product, name='delete_product'),
 
+    path('store-admin/orders/', views.orders_view, name='store_admin_orders'),
+    path('get-models-by-category/<int:category_id>/', views.get_models_by_category, name='get_models_by_category'),
+
 
 
 ]
