@@ -2,6 +2,15 @@
 {% load static %}
 
 {% block content %}
+
+
+
+
+
+
+
+
+
 <div class="container mt-4">
   <ul class="nav nav-tabs" id="ordersTab" role="tablist">
     <li class="nav-item">
@@ -15,7 +24,28 @@
   <div class="tab-content mt-3">
     <div class="tab-pane fade show active" id="stock">
       <h3>Stock Summary</h3>
-      <table class="table table-bordered mt-3">
+      <!-- Filters -->
+      <form method="get" class="row g-3 mt-2">
+        <div class="col-md-3">
+          <input type="text" name="search" class="form-control" placeholder="Search category, model or user" value="{{ request.GET.search }}">
+        </div>
+        <div class="col-md-2">
+          <input type="date" name="start_date" class="form-control" value="{{ request.GET.start_date }}">
+        </div>
+        <div class="col-md-2">
+          <input type="date" name="end_date" class="form-control" value="{{ request.GET.end_date }}">
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary w-100">Filter</button>
+        </div>
+        <div class="col-md-2">
+          <a href="?export=csv" class="btn btn-success w-100">Export CSV</a>
+        </div>
+        
+      </form>
+
+      <!-- Table -->
+      <table class="table table-bordered mt-3" id="stockSummaryTable">
         <thead class="table-info">
           <tr>
             <th>#</th>
@@ -26,6 +56,7 @@
             <th>Supplied To</th>
             <th>Received Person</th>
             <th>IV Number</th>
+            
           </tr>
         </thead>
         <tbody>
@@ -39,17 +70,16 @@
             <td>{{ order.supplied_to.username }}</td>
             <td>{{ order.received_person_name }}</td>
             <td>{{ order.iv_number }}</td>
+            
           </tr>
           {% empty %}
           <tr>
-            <td colspan="8">No supply orders available.</td>
+            <td colspan="8">No supply orders found.</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
-    
-    
   
     <div class="tab-pane fade" id="create" role="tabpanel">
       {% if messages %}
@@ -81,12 +111,9 @@
   
         <div class="row mb-3">
           <div class="col">
-            <label>
-              Quantity Supplied
-              <span id="availableQty" class="text-muted small"></span>
-            </label>
+            <label for="quantity">Quantity Supplied <span id="availableQuantity" class="text-muted ms-2"></span></label>
             <select name="quantity" id="quantitySelect" class="form-select" required>
-              <option value="" disabled selected>Select Quantity</option>
+              <option value="">-- Select Model First --</option>
             </select>
           </div>
           <div class="col">
@@ -94,6 +121,7 @@
             <input type="date" name="supplied_date" class="form-control" required>
           </div>
         </div>
+        
         
         <div class="row mb-3">
           <div class="col">
@@ -126,13 +154,14 @@
       </form>
     </div>
   </div>
-  
   <script>
+    const availableQuantities = {{ available_quantities|safe }};
     const categorySelect = document.getElementById('categorySelect');
     const modelSelect = document.getElementById('modelSelect');
     const quantitySelect = document.getElementById('quantitySelect');
-    const availableQty = document.getElementById('availableQty');
+    const availableQty = document.getElementById('availableQuantity');
   
+    // Load models when category changes
     categorySelect.addEventListener('change', function () {
       const categoryId = this.value;
       modelSelect.innerHTML = '<option value="" disabled selected>Loading models...</option>';
@@ -141,25 +170,41 @@
         .then(data => {
           modelSelect.innerHTML = '<option value="" disabled selected>Select Model</option>';
           data.forEach(model => {
-            modelSelect.innerHTML += `<option value="${model.id}" data-qty="${model.quantity}">${model.model}</option>`;
+            modelSelect.innerHTML += `<option value="${model.id}">${model.model}</option>`;
           });
+  
+          // Clear quantity dropdown and label
+          quantitySelect.innerHTML = '<option value="">-- Select Model First --</option>';
+          availableQty.textContent = '';
         });
     });
   
+    // Handle model selection and populate quantity dropdown
     modelSelect.addEventListener('change', function () {
-      const selectedOption = this.options[this.selectedIndex];
-      const available = selectedOption.getAttribute('data-qty');
-      availableQty.innerText = `(Available: ${available})`;
+      const modelId = this.value;
+      const available = availableQuantities[modelId] || 0;
   
-      quantitySelect.innerHTML = '<option value="" disabled selected>Select Quantity</option>';
-      for (let i = 1; i <= parseInt(available); i++) {
-        quantitySelect.innerHTML += `<option value="${i}">${i}</option>`;
+      availableQty.textContent = `(Available: ${available})`;
+  
+      // Fill quantity dropdown from 1 to available
+      quantitySelect.innerHTML = '';
+      if (available > 0) {
+        for (let i = 1; i <= available; i++) {
+          const option = document.createElement('option');
+          option.value = i;
+          option.textContent = i;
+          quantitySelect.appendChild(option);
+        }
+      } else {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No stock available';
+        quantitySelect.appendChild(option);
       }
     });
   </script>
   
-
-
-
 </div>
+
+
 {% endblock %}

@@ -38,6 +38,8 @@ urlpatterns = [
     path('store-admin/orders/', views.orders_view, name='store_admin_orders'),
     path('get-models-by-category/<int:category_id>/', views.get_models_by_category, name='get_models_by_category'),
 
+    path('get-available-quantity/', views.get_available_quantity, name='get_available_quantity'),
+
 
 
 ]
