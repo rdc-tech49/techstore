@@ -182,12 +182,13 @@ def products_view(request):
             quantity = request.POST.get('quantity')
             purchased_date = request.POST.get('purchased_date')
             reference_details = request.POST.get('reference_details')
+            rv_details = request.POST.get('rv_details')
             description = request.POST.get('description')
             warranty_expiry_date = request.POST.get('warranty_expiry_date') or None
             vendor_details = request.POST.get('vendor_details')
             delivery_challan = request.FILES.get('delivery_challan')
 
-            if not all([category_id, model, quantity, purchased_date, reference_details]):
+            if not all([category_id, model, quantity, purchased_date, reference_details,rv_details]):
                 messages.error(request, "Please fill all the required fields.")
                 return HttpResponseRedirect(reverse('store_admin_products') + '#add')
 
@@ -201,6 +202,7 @@ def products_view(request):
                 product.quantity = quantity
                 product.purchased_date = purchased_date
                 product.reference_details = reference_details
+                product.rv_details = rv_details
                 product.description = description
                 product.warranty_expiry_date = warranty_expiry_date
                 product.vendor_details = vendor_details
@@ -216,6 +218,7 @@ def products_view(request):
                     quantity=quantity,
                     purchased_date=purchased_date,
                     reference_details=reference_details,
+                    rv_details=rv_details,
                     description=description,
                     warranty_expiry_date=warranty_expiry_date,
                     vendor_details=vendor_details,

@@ -13,7 +13,7 @@
   </ul>
   
   <div class="tab-content mt-3">
-    <div class="tab-pane fade show active" id="summary">
+    <div class="tab-pane fade show active" id="stock">
       <h3>Stock Summary</h3>
       <table class="table table-bordered mt-3">
         <thead class="table-info">
@@ -94,26 +94,33 @@
             <input type="date" name="supplied_date" class="form-control" required>
           </div>
         </div>
-  
-        <div class="mb-3">
-          <label>Supplied To</label>
-          <select name="supplied_to" class="form-select" required>
-            <option value="" disabled selected>Select User</option>
-            {% for user in users %}
-              <option value="{{ user.id }}">{{ user.username }}</option>
-            {% endfor %}
-          </select>
+        
+        <div class="row mb-3">
+          <div class="col">
+            <label>
+              Supplied To
+            </label>
+            <select name="supplied_to" class="form-select" required>
+              <option value="" disabled selected>Select User</option>
+              {% for user in users %}
+                <option value="{{ user.id }}">{{ user.username }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col">
+            <label>IV Number</label>
+            <input type="text" name="iv_number" class="form-control" required>
+          </div>
         </div>
+
+        
   
         <div class="mb-3">
           <label>Received Person Name</label>
           <input type="text" name="received_person_name" class="form-control" required>
         </div>
   
-        <div class="mb-3">
-          <label>IV Number</label>
-          <input type="text" name="iv_number" class="form-control" required>
-        </div>
+        
   
         <button type="submit" class="btn btn-primary">Create Order</button>
       </form>

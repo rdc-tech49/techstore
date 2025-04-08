@@ -94,11 +94,19 @@
             <input type="date" name="purchased_date" class="form-control" required value="{{ edit_product.purchased_date|date:'Y-m-d' }}">
           </div>
         </div>
-      
-        <div class="mb-3">
-          <label for="reference_details">Reference Details</label>
-          <input type="text" name="reference_details" class="form-control" required value="{{ edit_product.reference_details|default:'' }}">
+
+        <div class="row mb-3">
+          <div class="col">
+            <label for="reference_details">Reference Details</label>
+            <input type="text" name="reference_details" class="form-control" required value="{{ edit_product.reference_details|default:'' }}">
+          </div>
+          <div class="col">
+            <label for="rv_details">RV Details</label>
+            <input type="text" name="rv_details" class="form-control" required value="{{ edit_product.rv_details|default:'' }}">
+          </div>
         </div>
+      
+        
       
         <div class="mb-3">
           <label for="description">Description</label>
