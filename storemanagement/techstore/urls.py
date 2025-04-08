@@ -40,6 +40,7 @@ urlpatterns = [
 
     path('get-available-quantity/', views.get_available_quantity, name='get_available_quantity'),
 
+    path('delete-supply-order/<int:order_id>/', views.delete_supply_order, name='delete_supply_order'),
 
 
 ]

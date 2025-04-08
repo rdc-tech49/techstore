@@ -3,14 +3,6 @@
 
 {% block content %}
 
-
-
-
-
-
-
-
-
 <div class="container mt-4">
   <ul class="nav nav-tabs" id="ordersTab" role="tablist">
     <li class="nav-item">
@@ -24,6 +16,12 @@
   <div class="tab-content mt-3">
     <div class="tab-pane fade show active" id="stock">
       <h3>Stock Summary</h3>
+
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
       <!-- Filters -->
       <form method="get" class="row g-3 mt-2">
         <div class="col-md-3">
@@ -56,7 +54,7 @@
             <th>Supplied To</th>
             <th>Received Person</th>
             <th>IV Number</th>
-            
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
@@ -70,6 +68,18 @@
             <td>{{ order.supplied_to.username }}</td>
             <td>{{ order.received_person_name }}</td>
             <td>{{ order.iv_number }}</td>
+            <td>
+              <!-- Edit Button -->
+              <a href="{% url 'store_admin_orders' %}?edit={{ order.id }}#create" class="btn btn-sm btn-primary">Edit</a>
+
+              <!-- Delete Form -->
+              <form method="POST" action="{% url 'delete_supply_order' order.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this order?');">
+                  Delete
+                </button>
+              </form>
+            </td>
             
           </tr>
           {% empty %}
@@ -82,29 +92,36 @@
     </div>
   
     <div class="tab-pane fade" id="create" role="tabpanel">
-      {% if messages %}
-        {% for message in messages %}
-          <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-        {% endfor %}
-      {% endif %}
+      
       <form method="POST">
         {% csrf_token %}
+        <input type="hidden" name="form_type" value="{% if edit_order %}update_order{% else %}create_order{% endif %}">
+        <input type="hidden" name="edit_id" value="{{ edit_order.id }}" />
         <input type="hidden" name="form_type" value="create_order">
+
+        <input type="hidden" name="form_type" value="{% if edit_order %}edit_order{% else %}create_order{% endif %}">
+        <input type="hidden" name="order_id" value="{{ edit_order.id }}" {% if not edit_order %}disabled{% endif %}>
+
   
         <div class="row mb-3">
           <div class="col">
             <label>Product Category</label>
+            <!-- Category -->
             <select name="category" id="categorySelect" class="form-select" required>
-              <option value="" disabled selected>Select Category</option>
+              <option value="" disabled {% if not edit_order %}selected{% endif %}>Select Category</option>
               {% for cat in categories %}
-                <option value="{{ cat.id }}">{{ cat.name }}</option>
+                <option value="{{ cat.id }}" {% if edit_order and edit_order.category.id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
               {% endfor %}
             </select>
           </div>
           <div class="col">
             <label>Model</label>
             <select name="model" id="modelSelect" class="form-select" required>
-              <option value="" disabled selected>Select Model</option>
+              {% if edit_order %}
+                <option value="{{ edit_order.model.id }}">{{ edit_order.model.model }}</option>
+              {% else %}
+                <option value="" disabled selected>Select Model</option>
+              {% endif %}
             </select>
           </div>
         </div>
@@ -113,12 +130,25 @@
           <div class="col">
             <label for="quantity">Quantity Supplied <span id="availableQuantity" class="text-muted ms-2"></span></label>
             <select name="quantity" id="quantitySelect" class="form-select" required>
-              <option value="">-- Select Model First --</option>
+              {% if edit_order %}
+                {% for i in max_quantity_range %}
+                  <option value="{{ i }}" {% if i == edit_order.quantity_supplied %}selected{% endif %}>{{ i }}</option>
+                {% endfor %}
+              {% else %}
+                <option value="">-- Select Model First --</option>
+              {% endif %}
             </select>
+
+            
+    {% comment %} <select name="quantity" id="quantitySelect" class="form-select" required>
+      <option value="">-- Select Model First --</option>
+    </select> {% endcomment %}
+            
           </div>
           <div class="col">
             <label>Supplied Date</label>
-            <input type="date" name="supplied_date" class="form-control" required>
+            <input type="date" name="supplied_date" class="form-control" required
+            value="{% if edit_order %}{{ edit_order.supplied_date|date:'Y-m-d' }}{% endif %}">
           </div>
         </div>
         
@@ -129,15 +159,16 @@
               Supplied To
             </label>
             <select name="supplied_to" class="form-select" required>
-              <option value="" disabled selected>Select User</option>
+              <option value="" disabled {% if not edit_order %}selected{% endif %}>Select User</option>
               {% for user in users %}
-                <option value="{{ user.id }}">{{ user.username }}</option>
+                <option value="{{ user.id }}" {% if edit_order and edit_order.supplied_to.id == user.id %}selected{% endif %}>{{ user.username }}</option>
               {% endfor %}
             </select>
           </div>
           <div class="col">
             <label>IV Number</label>
-            <input type="text" name="iv_number" class="form-control" required>
+            <input type="text" name="iv_number" class="form-control" required
+            value="{% if edit_order %}{{ edit_order.iv_number }}{% endif %}">
           </div>
         </div>
 
@@ -145,12 +176,15 @@
   
         <div class="mb-3">
           <label>Received Person Name</label>
-          <input type="text" name="received_person_name" class="form-control" required>
+          <input type="text" name="received_person_name" class="form-control" required
+       value="{% if edit_order %}{{ edit_order.received_person_name  }}{% endif %}">
         </div>
   
         
   
-        <button type="submit" class="btn btn-primary">Create Order</button>
+        <button type="submit" class="btn btn-primary">
+          {% if edit_order %}Update Order{% else %}Create Order{% endif %}
+        </button>
       </form>
     </div>
   </div>
@@ -200,6 +234,17 @@
         option.value = '';
         option.textContent = 'No stock available';
         quantitySelect.appendChild(option);
+      }
+    });
+  </script>
+  <script>
+    // Auto-activate "Create Supply Order" tab if ?edit= is in URL
+    document.addEventListener("DOMContentLoaded", function () {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('edit')) {
+        const tabTrigger = document.querySelector('#create-tab');
+        const tab = new bootstrap.Tab(tabTrigger);
+        tab.show();
       }
     });
   </script>
