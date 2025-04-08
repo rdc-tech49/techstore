@@ -278,6 +278,9 @@ def edit_product(request, product_id):
 def orders_view(request):
     categories = ProductCategory.objects.all()
     users = User.objects.all()
+    products = Product.objects.select_related('category').all()
+    supply_orders = SupplyOrder.objects.select_related('category', 'model', 'supplied_to').order_by('-supplied_date')
+
 
     if request.method == 'POST':
         form_type = request.POST.get('form_type')
@@ -315,11 +318,14 @@ def orders_view(request):
 
             messages.success(request, "Supply order created successfully.")
             return HttpResponseRedirect(reverse('store_admin_orders') + '#create')
-
-    return render(request, 'techstore/store_admin_supplyorders.html', {
+    context = {
         'categories': categories,
-        'users': users
-    })
+        'users': users,
+        'products': products,
+        'supply_orders': supply_orders,
+    }
+    return render(request, 'techstore/store_admin_supplyorders.html', context)
+
 
 def get_models_by_category(request, category_id):
     models = Product.objects.filter(category_id=category_id).values('id', 'model', 'quantity')

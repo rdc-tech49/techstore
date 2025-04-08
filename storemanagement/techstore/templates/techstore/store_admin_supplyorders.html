@@ -13,9 +13,43 @@
   </ul>
   
   <div class="tab-content mt-3">
-    <div class="tab-pane fade show active" id="stock" role="tabpanel">
-      <p>Stock Summary (coming soon)</p>
+    <div class="tab-pane fade show active" id="summary">
+      <h3>Stock Summary</h3>
+      <table class="table table-bordered mt-3">
+        <thead class="table-info">
+          <tr>
+            <th>#</th>
+            <th>Category</th>
+            <th>Model</th>
+            <th>Quantity Supplied</th>
+            <th>Supplied Date</th>
+            <th>Supplied To</th>
+            <th>Received Person</th>
+            <th>IV Number</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for order in supply_orders %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ order.category.name }}</td>
+            <td>{{ order.model.model }}</td>
+            <td>{{ order.quantity_supplied }}</td>
+            <td>{{ order.supplied_date }}</td>
+            <td>{{ order.supplied_to.username }}</td>
+            <td>{{ order.received_person_name }}</td>
+            <td>{{ order.iv_number }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8">No supply orders available.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+    
+    
   
     <div class="tab-pane fade" id="create" role="tabpanel">
       {% if messages %}
