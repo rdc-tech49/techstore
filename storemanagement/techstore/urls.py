@@ -42,5 +42,8 @@ urlpatterns = [
 
     path('delete-supply-order/<int:order_id>/', views.delete_supply_order, name='delete_supply_order'),
 
+    # filter for product supplied table 
+    path('store-admin/orders/ajax-stock-summary/', views.ajax_stock_summary, name='ajax_stock_summary'),
+
 
 ]

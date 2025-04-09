@@ -21,30 +21,23 @@
           <div class="alert alert-{{ message.tags }}">{{ message }}</div>
         {% endfor %}
       {% endif %}
-      <!-- Filters -->
-      <form method="get" class="row g-3 mt-2">
+      
+
+      <!-- Search and Filter Form -->
+      <form id="filterForm" class="row g-3 mb-2">
+        <div class="col-md-4">
+            <input type="text" id="searchInput" name="search" class="form-control" placeholder="Search category or model">
+        </div>
         <div class="col-md-3">
-          <input type="text" name="search" class="form-control" placeholder="Search category, model or user" value="{{ request.GET.search }}">
+            <input type="date" id="startDateInput" name="start_date" class="form-control">
+        </div>
+        <div class="col-md-3">
+            <input type="date" id="endDateInput" name="end_date" class="form-control">
         </div>
         <div class="col-md-2">
-          <input type="date" name="start_date" class="form-control" value="{{ request.GET.start_date }}">
+            <button type="button" class="btn btn-outline-primary w-100" id="clearFilters">Clear</button>
         </div>
-        <div class="col-md-2">
-          <input type="date" name="end_date" class="form-control" value="{{ request.GET.end_date }}">
-        </div>
-        <div class="col-md-2">
-          <button type="submit" class="btn btn-primary w-100">Filter</button>
-        </div>
-        <div class="col-md-1">
-          <a href="{% url 'store_admin_orders' %}#products-to-supply" class="btn btn-outline-secondary w-100">Clear</a>
-        </div>
-        <div class="col-md-2">
-          <a href="?{% if search %}search={{ search }}&{% endif %}{% if start_date %}start_date={{ start_date }}&{% endif %}{% if end_date %}end_date={{ end_date }}&{% endif %}export=csv" class="btn btn-success">Export CSV</a>
-
-        </div>
-        
       </form>
-
       <!-- Table -->
       <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
 
@@ -62,7 +55,7 @@
               <th>Action</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody  id="stockSummaryTableBody">
             {% for order in supply_orders %}
             <tr>
               <td>{{ forloop.counter }}</td>
@@ -95,6 +88,8 @@
           </tbody>
         </table>
       </div>
+      <!-- Export Button -->
+<a href="#" id="exportCSV" class="btn btn-outline-success">Export CSV</a>
       <hr>
 
       <h4 class="mt-5">Products to be Supplied</h4>
@@ -118,7 +113,6 @@
           <a href="?{% if product_search %}product_search={{ product_search }}&{% endif %}{% if product_start_date %}product_start_date={{ product_start_date }}&{% endif %}{% if product_end_date %}product_end_date={{ product_end_date }}&{% endif %}product_export=csv"  class="btn btn-success">Export CSV</a>
         </div>
       </form>
-      
       <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
         <table class="table table-bordered mt-2">
           <thead class="table-warning">
@@ -308,6 +302,76 @@
     });
   </script>
   
+{% comment %} filter for first table  {% endcomment %}
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+          const filterForm = document.getElementById("filterForm");
+          const stockSummaryTableBody = document.getElementById("stockSummaryTableBody");
+          const searchInput = document.getElementById("searchInput");
+          const startDateInput = document.getElementById("startDateInput");
+          const endDateInput = document.getElementById("endDateInput");
+          const exportCSV = document.getElementById("exportCSV");
+          const clearFilters = document.getElementById("clearFilters");
+      
+          function fetchFilteredData() {
+              let params = new URLSearchParams(new FormData(filterForm)).toString();
+              fetch(`/store-admin/orders/?${params}`, {
+                  headers: { "X-Requested-With": "XMLHttpRequest" }
+              })
+              .then(response => response.json())
+              .then(data => {
+                  stockSummaryTableBody.innerHTML = "";
+                  if (data.supply_orders.length === 0) {
+                      stockSummaryTableBody.innerHTML = "<tr><td colspan='9'>No supply orders found.</td></tr>";
+                      return;
+                  }
+                  data.supply_orders.forEach((order, index) => {
+                      stockSummaryTableBody.innerHTML += `
+                          <tr>
+                              <td>${index + 1}</td>
+                              <td>${order.category}</td>
+                              <td>${order.model}</td>
+                              <td>${order.quantity_supplied}</td>
+                              <td>${order.supplied_date}</td>
+                              <td>${order.supplied_to}</td>
+                              <td>${order.received_person}</td>
+                              <td>${order.iv_number}</td>
+                              <td>
+                                  <a href="${order.edit_url}" class="btn btn-sm btn-primary">Edit</a>
+                                  <form method="POST" action="${order.delete_url}" style="display:inline;">
+                                      <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">
+                                          Delete
+                                      </button>
+                                  </form>
+                              </td>
+                          </tr>
+                      `;
+                  });
+              });
+          }
+      
+          function exportCSVData() {
+              let params = new URLSearchParams(new FormData(filterForm)).toString();
+              window.location.href = `/store-admin/orders/?export=csv&${params}`;
+          }
+      
+          function clearFiltersFunc() {
+              searchInput.value = "";
+              startDateInput.value = "";
+              endDateInput.value = "";
+              fetchFilteredData();
+          }
+      
+          searchInput.addEventListener("keyup", fetchFilteredData);
+          startDateInput.addEventListener("change", fetchFilteredData);
+          endDateInput.addEventListener("change", fetchFilteredData);
+          exportCSV.addEventListener("click", exportCSVData);
+          clearFilters.addEventListener("click", clearFiltersFunc);
+      
+          fetchFilteredData();  // Load initial data
+      });
+      </script>
+      
 </div>
 
 
