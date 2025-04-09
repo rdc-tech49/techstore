@@ -15,7 +15,7 @@ from django.core.files.storage import FileSystemStorage
 import csv
 from django.db.models import Q, Sum
 from django.views.decorators.http import require_POST
-
+from datetime import datetime
 
 def home(request):
     if request.method == 'POST':
@@ -281,26 +281,278 @@ def edit_product(request, product_id):
     })
 
 
+# def orders_view(request):
+#     categories = ProductCategory.objects.all()
+#     users = User.objects.all()
+#     products = Product.objects.select_related('category').all()
+#     supply_orders = SupplyOrder.objects.select_related('category', 'model', 'supplied_to').order_by('-supplied_date')
+
+#     # Available quantity calculation
+#     supplied_totals = SupplyOrder.objects.values('model_id').annotate(total_supplied=Sum('quantity_supplied'))
+#     supplied_dict = {item['model_id']: item['total_supplied'] for item in supplied_totals}
+
+#     available_quantities = {
+#         product.id: max(product.quantity - supplied_dict.get(product.id, 0), 0)
+#         for product in products
+#     }
+
+#     # Filters for 'Products to be Supplied' table
+#     product_search = request.GET.get('product_search', '').strip()
+#     product_start_date = request.GET.get('product_start_date')
+#     product_end_date = request.GET.get('product_end_date')
+
+#     products_to_supply = []
+#     for product in products:
+#         total_supplied = supplied_dict.get(product.id, 0)
+#         remaining_quantity = max(product.quantity - total_supplied, 0)
+#         if remaining_quantity > 0:
+#             # Search filter
+#             if product_search:
+#                 if (product.category.name.lower().find(product_search.lower()) == -1 and
+#                     product.model.lower().find(product_search.lower()) == -1):
+#                     continue
+#             # Date range filter
+#             if product_start_date:
+#                 try:
+#                     start = datetime.strptime(product_start_date, '%Y-%m-%d').date()
+#                     if product.purchased_date < start:
+#                         continue
+#                 except ValueError:
+#                     pass
+#             if product_end_date:
+#                 try:
+#                     end = datetime.strptime(product_end_date, '%Y-%m-%d').date()
+#                     if product.purchased_date > end:
+#                         continue
+#                 except ValueError:
+#                     pass
+
+#             products_to_supply.append({
+#                 'category_name': product.category.name,
+#                 'model': product.model,
+#                 'purchased_date': product.purchased_date,
+#                 'remaining_quantity': remaining_quantity,
+#             })
+
+
+
+#     # Filters
+#     search = request.GET.get('search', '').strip()
+#     start_date = request.GET.get('start_date')
+#     end_date = request.GET.get('end_date')
+#     export = request.GET.get('export')
+
+#     if search:
+#         supply_orders = supply_orders.filter(
+#             Q(category__name__icontains=search) |
+#             Q(model__model__icontains=search) |
+#             Q(supplied_to__username__icontains=search)
+#         )
+#     if start_date:
+#         supply_orders = supply_orders.filter(supplied_date__gte=start_date)
+#     if end_date:
+#         supply_orders = supply_orders.filter(supplied_date__lte=end_date)
+
+#     supply_orders = supply_orders.order_by('-supplied_date')
+
+#     # Export CSV
+#     export = request.GET.get('export')
+
+#     if export == 'csv':
+#         response = HttpResponse(content_type='text/csv')
+#         response['Content-Disposition'] = 'attachment; filename="stock_summary.csv"'
+#         writer = csv.writer(response)
+#         writer.writerow(['Category', 'Model', 'Quantity Supplied', 'Supplied Date', 'Supplied To', 'Received Person', 'IV Number'])
+
+#         for order in supply_orders:
+#             writer.writerow([
+#                 order.category.name,
+#                 order.model.model,
+#                 order.quantity_supplied,
+#                 order.supplied_date,
+#                 order.supplied_to.username,
+#                 order.received_person_name,
+#                 order.iv_number
+#             ])
+#         return response
+
+
+#     # Inline edit logic
+#     edit_order = None
+#     max_quantity_range = []
+#     edit_id = request.GET.get('edit')
+#     if edit_id:
+#         edit_order = get_object_or_404(SupplyOrder, id=edit_id)
+#         model = edit_order.model
+#         total_supplied = supplied_dict.get(model.id, 0)
+#         # Exclude the current order's own quantity
+#         total_supplied_excl_self = total_supplied - edit_order.quantity_supplied
+#         max_available = model.quantity - total_supplied_excl_self
+#         max_quantity_range = list(range(1, max_available + 1))
+
+        
+
+#     # Handle POST (Create or Update)
+#     if request.method == 'POST':
+#         form_type = request.POST.get('form_type')
+#         category_id = request.POST.get('category')
+#         model_id = request.POST.get('model')
+#         quantity = request.POST.get('quantity')
+#         supplied_date = request.POST.get('supplied_date')
+#         supplied_to_id = request.POST.get('supplied_to')
+#         received_person_name = request.POST.get('received_person_name')
+#         iv_number = request.POST.get('iv_number')
+
+#         if not all([category_id, model_id, quantity, supplied_date, supplied_to_id, received_person_name, iv_number]):
+#             messages.error(request, "Please fill all required fields.")
+#             return HttpResponseRedirect(reverse('store_admin_orders') + '#create')
+
+#         model = get_object_or_404(Product, id=model_id)
+#         total_supplied = supplied_dict.get(model.id, 0)
+#         max_available = model.quantity - total_supplied
+
+#         if form_type == 'create_order':
+#             if int(quantity) > max_available:
+#                 messages.error(request, "Supplied quantity exceeds available stock.")
+#                 return HttpResponseRedirect(reverse('store_admin_orders') + '#create')
+
+#             SupplyOrder.objects.create(
+#                 category_id=category_id,
+#                 model_id=model_id,
+#                 quantity_supplied=quantity,
+#                 supplied_date=supplied_date,
+#                 supplied_to_id=supplied_to_id,
+#                 received_person_name=received_person_name,
+#                 iv_number=iv_number
+#             )
+#             messages.success(request, "Supply order created successfully.")
+#             return HttpResponseRedirect(reverse('store_admin_orders') + '#create')
+
+#         elif form_type == 'edit_order':
+#             order_id = request.POST.get('order_id')
+#             order = get_object_or_404(SupplyOrder, id=order_id)
+            
+#             category_id = request.POST.get('category')
+#             model_id = request.POST.get('model')
+#             quantity = int(request.POST.get('quantity'))
+#             supplied_date = request.POST.get('supplied_date')
+#             supplied_to_id = request.POST.get('supplied_to')
+#             received_person_name = request.POST.get('received_person_name')
+#             iv_number = request.POST.get('iv_number')
+
+#             if not all([category_id, model_id, quantity, supplied_date, supplied_to_id, received_person_name, iv_number]):
+#                 messages.error(request, "Please fill all required fields.")
+#                 return HttpResponseRedirect(reverse('store_admin_orders') + '#create')
+
+#             model = get_object_or_404(Product, id=model_id)
+
+#             # Compute updated available quantity (excluding the current order)
+#             total_supplied = SupplyOrder.objects.filter(model_id=model.id).exclude(id=order.id).aggregate(total=Sum('quantity_supplied'))['total'] or 0
+#             available_quantity = model.quantity - total_supplied
+
+#             if quantity > available_quantity:
+#                 messages.error(request, "Supplied quantity exceeds available stock.")
+#                 return HttpResponseRedirect(reverse('store_admin_orders') + f'?edit={order.id}#create')
+
+#             # Update the order
+
+#             order.category_id = category_id
+#             order.model_id = model_id
+#             order.quantity_supplied = quantity
+#             order.supplied_date = supplied_date
+#             order.supplied_to_id = supplied_to_id
+#             order.received_person_name = received_person_name
+#             order.iv_number = iv_number
+#             order.save()
+
+#             messages.success(request, "Supply order updated successfully.")
+#             return HttpResponseRedirect(reverse('store_admin_orders') + '#create')
+
+#     # Delete logic
+#     if request.GET.get('delete'):
+#         delete_id = request.GET.get('delete')
+#         order = get_object_or_404(SupplyOrder, id=delete_id)
+#         order.delete()
+#         messages.success(request, "Supply order deleted successfully.")
+#         return HttpResponseRedirect(reverse('store_admin_orders') + '#stock')
+
+
+#     if request.GET.get('product_export') == 'csv':
+#         response = HttpResponse(content_type='text/csv')
+#         response['Content-Disposition'] = 'attachment; filename="products_to_be_supplied.csv"'
+#         writer = csv.writer(response)
+#         writer.writerow(['Category', 'Model', 'Purchased Date', 'Quantity to be Supplied'])
+#         for item in products_to_supply:
+#             writer.writerow([
+#                 item['category_name'],
+#                 item['model'],
+#                 item['purchased_date'],
+#                 item['remaining_quantity'],
+#             ])
+#         return response
+
+#     context = {
+#         'categories': categories,
+#         'users': users,
+#         'products': products,
+#         'supply_orders': supply_orders,
+#         'available_quantities': available_quantities,
+#         'edit_order': edit_order,
+#         'max_quantity_range': max_quantity_range,
+#         'products_to_supply': products_to_supply,  
+#         'product_search': product_search,
+#         'product_start_date': product_start_date,
+#         'product_end_date': product_end_date,
+#         'search': search,
+#         'start_date': start_date,
+#         'end_date': end_date,
+#     }
+#     return render(request, 'techstore/store_admin_supplyorders.html', context)
+
 def orders_view(request):
+    # Basic queries
     categories = ProductCategory.objects.all()
     users = User.objects.all()
     products = Product.objects.select_related('category').all()
     supply_orders = SupplyOrder.objects.select_related('category', 'model', 'supplied_to').order_by('-supplied_date')
 
-    # Available quantity calculation
+    # Available quantity calculation for Products (for dynamic quantity dropdowns)
     supplied_totals = SupplyOrder.objects.values('model_id').annotate(total_supplied=Sum('quantity_supplied'))
     supplied_dict = {item['model_id']: item['total_supplied'] for item in supplied_totals}
+    available_quantities = {product.id: max(product.quantity - supplied_dict.get(product.id, 0), 0)
+                            for product in products}
 
-    available_quantities = {
-        product.id: max(product.quantity - supplied_dict.get(product.id, 0), 0)
-        for product in products
-    }
+    # ===== Filters for Products to be Supplied Table =====
+    product_search = request.GET.get('product_search', '').strip()
+    product_start_date = request.GET.get('product_start_date')
+    product_end_date = request.GET.get('product_end_date')
 
     products_to_supply = []
     for product in products:
         total_supplied = supplied_dict.get(product.id, 0)
         remaining_quantity = max(product.quantity - total_supplied, 0)
         if remaining_quantity > 0:
+            # Apply search filter if provided
+            if product_search:
+                if (product.category.name.lower().find(product_search.lower()) == -1 and
+                    product.model.lower().find(product_search.lower()) == -1):
+                    continue
+            # Apply date range filter if provided
+            if product_start_date:
+                try:
+                    start = datetime.strptime(product_start_date, '%Y-%m-%d').date()
+                    if product.purchased_date < start:
+                        continue
+                except ValueError:
+                    pass
+            if product_end_date:
+                try:
+                    end = datetime.strptime(product_end_date, '%Y-%m-%d').date()
+                    if product.purchased_date > end:
+                        continue
+                except ValueError:
+                    pass
+
             products_to_supply.append({
                 'category_name': product.category.name,
                 'model': product.model,
@@ -308,11 +560,11 @@ def orders_view(request):
                 'remaining_quantity': remaining_quantity,
             })
 
-    # Filters
+    # ===== Filters for Supply Orders (Stock Summary) Table =====
     search = request.GET.get('search', '').strip()
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
-    export = request.GET.get('export')
+    export = request.GET.get('export')  # For supply orders CSV export
 
     if search:
         supply_orders = supply_orders.filter(
@@ -324,10 +576,9 @@ def orders_view(request):
         supply_orders = supply_orders.filter(supplied_date__gte=start_date)
     if end_date:
         supply_orders = supply_orders.filter(supplied_date__lte=end_date)
-
     supply_orders = supply_orders.order_by('-supplied_date')
 
-    # Export CSV
+    # ===== Export Supply Orders to CSV =====
     if export == 'csv':
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="stock_summary.csv"'
@@ -345,42 +596,64 @@ def orders_view(request):
             ])
         return response
 
-    # Inline edit logic
+    # ===== Export Products to be Supplied to CSV =====
+    if request.GET.get('product_export') == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="products_to_be_supplied.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['Category', 'Model', 'Purchased Date', 'Quantity to be Supplied'])
+        for item in products_to_supply:
+            writer.writerow([
+                item['category_name'],
+                item['model'],
+                item['purchased_date'],
+                item['remaining_quantity'],
+            ])
+        return response
+
+    # ===== Inline Edit Logic for Supply Orders =====
     edit_order = None
     max_quantity_range = []
     edit_id = request.GET.get('edit')
     if edit_id:
         edit_order = get_object_or_404(SupplyOrder, id=edit_id)
-        model = edit_order.model
-        total_supplied = supplied_dict.get(model.id, 0)
-        # Exclude the current order's own quantity
+        model_obj = edit_order.model
+        # Calculate total supplied for this model
+        total_supplied = supplied_dict.get(model_obj.id, 0)
+        # Exclude the current order's quantity for an accurate available stock calculation
         total_supplied_excl_self = total_supplied - edit_order.quantity_supplied
-        max_available = model.quantity - total_supplied_excl_self
-        max_quantity_range = list(range(1, max_available + 1))
+        max_available = model_obj.quantity - total_supplied_excl_self
+        max_quantity_range = list(range(1, max_available + edit_order.quantity_supplied + 1))
 
-        
-
-    # Handle POST (Create or Update)
+    # ===== Handle POST Requests (Creation / Update) =====
     if request.method == 'POST':
         form_type = request.POST.get('form_type')
+        # Common fields for both create and update:
         category_id = request.POST.get('category')
         model_id = request.POST.get('model')
-        quantity = request.POST.get('quantity')
+        quantity_str = request.POST.get('quantity')
         supplied_date = request.POST.get('supplied_date')
         supplied_to_id = request.POST.get('supplied_to')
         received_person_name = request.POST.get('received_person_name')
         iv_number = request.POST.get('iv_number')
 
-        if not all([category_id, model_id, quantity, supplied_date, supplied_to_id, received_person_name, iv_number]):
+        if not all([category_id, model_id, quantity_str, supplied_date, supplied_to_id, received_person_name, iv_number]):
             messages.error(request, "Please fill all required fields.")
             return HttpResponseRedirect(reverse('store_admin_orders') + '#create')
 
-        model = get_object_or_404(Product, id=model_id)
-        total_supplied = supplied_dict.get(model.id, 0)
-        max_available = model.quantity - total_supplied
+        try:
+            quantity = int(quantity_str)
+        except ValueError:
+            messages.error(request, "Invalid quantity value.")
+            return HttpResponseRedirect(reverse('store_admin_orders') + '#create')
+
+        model_obj = get_object_or_404(Product, id=model_id)
+        # Recalculate total supplied and available quantity for this product
+        total_supplied = supplied_dict.get(model_obj.id, 0)
+        max_available = model_obj.quantity - total_supplied
 
         if form_type == 'create_order':
-            if int(quantity) > max_available:
+            if quantity > max_available:
                 messages.error(request, "Supplied quantity exceeds available stock.")
                 return HttpResponseRedirect(reverse('store_admin_orders') + '#create')
 
@@ -399,31 +672,15 @@ def orders_view(request):
         elif form_type == 'edit_order':
             order_id = request.POST.get('order_id')
             order = get_object_or_404(SupplyOrder, id=order_id)
-            
-            category_id = request.POST.get('category')
-            model_id = request.POST.get('model')
-            quantity = int(request.POST.get('quantity'))
-            supplied_date = request.POST.get('supplied_date')
-            supplied_to_id = request.POST.get('supplied_to')
-            received_person_name = request.POST.get('received_person_name')
-            iv_number = request.POST.get('iv_number')
-
-            if not all([category_id, model_id, quantity, supplied_date, supplied_to_id, received_person_name, iv_number]):
-                messages.error(request, "Please fill all required fields.")
-                return HttpResponseRedirect(reverse('store_admin_orders') + '#create')
-
-            model = get_object_or_404(Product, id=model_id)
-
-            # Compute updated available quantity (excluding the current order)
-            total_supplied = SupplyOrder.objects.filter(model_id=model.id).exclude(id=order.id).aggregate(total=Sum('quantity_supplied'))['total'] or 0
-            available_quantity = model.quantity - total_supplied
+            # Recalculate available quantity for update: exclude this order's current quantity
+            total_supplied_excl = SupplyOrder.objects.filter(model_id=model_obj.id).exclude(id=order.id).aggregate(total=Sum('quantity_supplied'))['total'] or 0
+            available_quantity = model_obj.quantity - total_supplied_excl
 
             if quantity > available_quantity:
                 messages.error(request, "Supplied quantity exceeds available stock.")
                 return HttpResponseRedirect(reverse('store_admin_orders') + f'?edit={order.id}#create')
 
-            # Update the order
-
+            # Update the order fields
             order.category_id = category_id
             order.model_id = model_id
             order.quantity_supplied = quantity
@@ -434,9 +691,9 @@ def orders_view(request):
             order.save()
 
             messages.success(request, "Supply order updated successfully.")
-            return HttpResponseRedirect(reverse('store_admin_orders') + '#create')
+            return HttpResponseRedirect(reverse('store_admin_orders') + '#stock')
 
-    # Delete logic
+    # ===== Delete Logic =====
     if request.GET.get('delete'):
         delete_id = request.GET.get('delete')
         order = get_object_or_404(SupplyOrder, id=delete_id)
@@ -452,7 +709,13 @@ def orders_view(request):
         'available_quantities': available_quantities,
         'edit_order': edit_order,
         'max_quantity_range': max_quantity_range,
-        'products_to_supply': products_to_supply,  # 👈 new context
+        'products_to_supply': products_to_supply,
+        'product_search': product_search,
+        'product_start_date': product_start_date,
+        'product_end_date': product_end_date,
+        'search': search,
+        'start_date': start_date,
+        'end_date': end_date,
     }
     return render(request, 'techstore/store_admin_supplyorders.html', context)
 

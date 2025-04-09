@@ -35,8 +35,12 @@
         <div class="col-md-2">
           <button type="submit" class="btn btn-primary w-100">Filter</button>
         </div>
+        <div class="col-md-1">
+          <a href="{% url 'store_admin_orders' %}#products-to-supply" class="btn btn-outline-secondary w-100">Clear</a>
+        </div>
         <div class="col-md-2">
-          <a href="?export=csv" class="btn btn-success w-100">Export CSV</a>
+          <a href="?{% if search %}search={{ search }}&{% endif %}{% if start_date %}start_date={{ start_date }}&{% endif %}{% if end_date %}end_date={{ end_date }}&{% endif %}export=csv" class="btn btn-success">Export CSV</a>
+
         </div>
         
       </form>
@@ -94,6 +98,27 @@
       <hr>
 
       <h4 class="mt-5">Products to be Supplied</h4>
+      <form method="get" class="row g-3 mb-2">
+        <div class="col-md-3">
+          <input type="text" name="product_search" class="form-control" placeholder="Search category or model" value="{{ product_search }}">
+        </div>
+        <div class="col-md-2">
+          <input type="date" name="product_start_date" class="form-control" value="{{ product_start_date }}">
+        </div>
+        <div class="col-md-2">
+          <input type="date" name="product_end_date" class="form-control" value="{{ product_end_date }}">
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-outline-primary w-100">Filter</button>
+        </div>
+        <div class="col-md-1">
+          <a href="{% url 'store_admin_orders' %}#products-to-supply" class="btn btn-outline-secondary w-100">Clear</a>
+        </div>
+        <div class="col-md-2">
+          <a href="?{% if product_search %}product_search={{ product_search }}&{% endif %}{% if product_start_date %}product_start_date={{ product_start_date }}&{% endif %}{% if product_end_date %}product_end_date={{ product_end_date }}&{% endif %}product_export=csv"  class="btn btn-success">Export CSV</a>
+        </div>
+      </form>
+      
       <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
         <table class="table table-bordered mt-2">
           <thead class="table-warning">
