@@ -25,6 +25,7 @@
 
       <!-- Search and Filter Form -->
       <form id="filterForm" class="row g-3 mb-2">
+        {% csrf_token %}
         <div class="col-md-4">
             <input type="text" id="searchInput" name="search" class="form-control" placeholder="Search category or model">
         </div>
@@ -95,6 +96,7 @@
       <h4 class="mt-5">Products to be Supplied</h4>
 
       <form id="productsFilterForm" class="row g-2 align-items-end mb-2">
+        {% csrf_token %}
         <div class="row g-2 mb-2">
           <div class="col-md-3">
             <input type="text" class="form-control" id="productSearchInput" placeholder="Search category/model">
@@ -341,6 +343,7 @@
                               <td>
                                   <a href="${order.edit_url}" class="btn btn-sm btn-primary">Edit</a>
                                   <form method="POST" action="${order.delete_url}" style="display:inline;">
+                                    {% csrf_token %}
                                       <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">
                                           Delete
                                       </button>

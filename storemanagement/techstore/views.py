@@ -242,10 +242,30 @@ def products_view(request):
     product_id_to_edit = request.GET.get('edit')
     edit_product = Product.objects.filter(id=product_id_to_edit).first() if product_id_to_edit else None
 
+    # Check if products are already used in supply orders
+    from .models import SupplyOrder  # Make sure it's imported
+    supplied_product_ids = set(
+        SupplyOrder.objects.values_list('model_id', flat=True)
+    )
+
+    products_with_status = []
+    for product in products:
+        has_been_supplied = product.id in supplied_product_ids
+        products_with_status.append({
+            'id': product.id,
+            'category_name': product.category.name,
+            'model': product.model,
+            'quantity': product.quantity,
+            'purchased_date': product.purchased_date,
+            'has_been_supplied': has_been_supplied,
+        })
+
+
     context = {
         'categories': categories,
         'products': products,
         'edit_product': edit_product,
+        'products_with_status': products_with_status,
     }
     return render(request, 'techstore/store_admin_products.html', context)
 
