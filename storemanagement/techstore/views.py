@@ -98,7 +98,36 @@ def home_view(request):
 
 @login_required
 def dashboard_view(request):
-    return render(request, 'techstore/store_admin_dashboard.html')
+    # Get all products
+    products = Product.objects.all().order_by('-id')
+
+    # Get total quantity supplied per model
+    supply_data = SupplyOrder.objects.values('model__model').annotate(
+        total_supplied=Sum('quantity_supplied')
+    )
+    supplied_dict = {item['model__model']: item['total_supplied'] for item in supply_data}
+
+    # Prepare product status list
+    product_status = []
+    for product in products:
+        supplied_qty = supplied_dict.get(product.model, 0)
+        stock_qty = product.quantity - supplied_qty
+
+        product_status.append({
+            'id': product.id,
+            'category': product.category.name,
+            'model': product.model,
+            'purchased_date': product.purchased_date,
+            'quantity_received': product.quantity,
+            'quantity_supplied': supplied_qty,
+            'quantity_in_stock': stock_qty,
+        })
+
+    context = {
+        'product_status': product_status,
+    }
+
+    return render(request, 'techstore/store_admin_dashboard.html', context)
 
 @login_required
 def customers_view(request):
@@ -636,3 +665,68 @@ def ajax_stock_summary(request):
         })
 
     return JsonResponse({'orders': data})
+
+# dashboard view table filter
+def get_filtered_product_status(request):
+    search = request.GET.get('search', '').lower()
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+
+    products = Product.objects.all()
+
+    if search:
+        products = products.filter(model__icontains=search) | products.filter(category__name__icontains=search)
+    if start_date:
+        products = products.filter(purchased_date__gte=start_date)
+    if end_date:
+        products = products.filter(purchased_date__lte=end_date)
+
+    data = []
+    for p in products:
+        supplied_quantity = SupplyOrder.objects.filter(model=p).aggregate(total=Sum('quantity_supplied'))['total'] or 0
+        data.append({
+            'id': p.id,
+            'category': p.category.name,
+            'model': p.model,
+            'purchased_date': p.purchased_date.strftime('%Y-%m-%d'),
+            'quantity_received': p.quantity,
+            'quantity_supplied': supplied_quantity,
+            'quantity_in_stock': p.quantity - supplied_quantity
+        })
+
+    return JsonResponse(data, safe=False)
+
+# dashboard table export 
+def export_product_status_csv(request):
+    search = request.GET.get('search', '').lower()
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+
+    products = Product.objects.all()
+
+    if search:
+        products = products.filter(model__icontains=search) | products.filter(category__name__icontains=search)
+    if start_date:
+        products = products.filter(purchased_date__gte=start_date)
+    if end_date:
+        products = products.filter(purchased_date__lte=end_date)
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="product_status.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(['ID', 'Category', 'Model', 'Purchased Date', 'Quantity Received', 'Quantity Supplied', 'Quantity in Stock'])
+
+    for p in products:
+        supplied_quantity = SupplyOrder.objects.filter(model=p).aggregate(total=Sum('quantity_supplied'))['total'] or 0
+        writer.writerow([
+            p.id,
+            p.category.name,
+            p.model,
+            p.purchased_date,
+            p.quantity,
+            supplied_quantity,
+            p.quantity - supplied_quantity
+        ])
+
+    return response

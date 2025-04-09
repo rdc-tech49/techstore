@@ -4,19 +4,127 @@
   <h3>Dashboard</h3>
   <ul class="nav nav-tabs">
     <li class="nav-item">
-      <a class="nav-link active" data-bs-toggle="tab" href="#purchased">Products Purchased</a>
+      <a class="nav-link active" data-bs-toggle="tab" href="#product_status">Products status</a>
     </li>
-    <li class="nav-item">
-      <a class="nav-link" data-bs-toggle="tab" href="#supplied">Products Supplied</a>
-    </li>
+    
     <li class="nav-item">
       <a class="nav-link" data-bs-toggle="tab" href="#report">Report</a>
     </li>
   </ul>
   <div class="tab-content mt-3">
-    <div class="tab-pane fade show active" id="purchased">...purchased content...</div>
-    <div class="tab-pane fade" id="supplied">...supplied content...</div>
+    <div class="tab-pane fade show active" id="product-status" role="tabpanel">
+      <h4 class="mt-4">Product Details</h4>
+
+  <!-- Filters -->
+  <div class="row mt-3 mb-2">
+    <div class="col-md-3">
+      <input type="text" id="productSearch" class="form-control" placeholder="Search category or model">
+    </div>
+    <div class="col-md-2">
+      <input type="date" id="startDate" class="form-control">
+    </div>
+    <div class="col-md-2">
+      <input type="date" id="endDate" class="form-control">
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-success w-100" id="exportCSV">Export CSV</button>
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-secondary w-100" id="clearFilters">Clear</button>
+    </div>
+  </div>
+  
+
+  <!-- Table -->
+  <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+    <table class="table table-bordered">
+      <thead class="table-info">
+        <tr>
+          <th>ID</th>
+          <th>Category</th>
+          <th>Model</th>
+          <th>Purchased Date</th>
+          <th>Quantity Received</th>
+          <th>Quantity Supplied</th>
+          <th>Quantity in Stock</th>
+        </tr>
+      </thead>
+      <tbody id="productStatusTableBody">
+        {% for item in product_status %}
+        <tr>
+          <td>{{ item.id }}</td>
+          <td>{{ item.category }}</td>
+          <td>{{ item.model }}</td>
+          <td>{{ item.purchased_date }}</td>
+          <td>{{ item.quantity_received }}</td>
+          <td>{{ item.quantity_supplied }}</td>
+          <td>{{ item.quantity_in_stock }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+    
+    
     <div class="tab-pane fade" id="report">...report content...</div>
   </div>
+
+  {% comment %} filter for first table  {% endcomment %}
+  <script>
+    function fetchProductStatus() {
+      const search = document.getElementById("productSearch").value;
+      const startDate = document.getElementById("startDate").value;
+      const endDate = document.getElementById("endDate").value;
+  
+      fetch(`/dashboard/product-status/filter/?search=${search}&start_date=${startDate}&end_date=${endDate}`)
+        .then(response => response.json())
+        .then(data => {
+          const tbody = document.getElementById("productStatusTableBody");
+          tbody.innerHTML = "";
+  
+          if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">No records found</td></tr>';
+          } else {
+            data.forEach((item) => {
+              tbody.innerHTML += `
+                <tr>
+                  <td>${item.id}</td>
+                  <td>${item.category}</td>
+                  <td>${item.model}</td>
+                  <td>${item.purchased_date}</td>
+                  <td>${item.quantity_received}</td>
+                  <td>${item.quantity_supplied}</td>
+                  <td>${item.quantity_in_stock}</td>
+                </tr>`;
+            });
+          }
+        });
+    }
+  
+    document.getElementById("productSearch").addEventListener("input", fetchProductStatus);
+    document.getElementById("startDate").addEventListener("change", fetchProductStatus);
+    document.getElementById("endDate").addEventListener("change", fetchProductStatus);
+  
+    document.getElementById("exportCSV").addEventListener("click", function () {
+      const search = document.getElementById("productSearch").value;
+      const startDate = document.getElementById("startDate").value;
+      const endDate = document.getElementById("endDate").value;
+  
+      const url = `/dashboard/product-status/export/?search=${search}&start_date=${startDate}&end_date=${endDate}`;
+      window.location.href = url;
+    });
+    // ✅ Clear Button Function
+    document.getElementById("clearFilters").addEventListener("click", function () {
+      document.getElementById("productSearch").value = "";
+      document.getElementById("startDate").value = "";
+      document.getElementById("endDate").value = "";
+      fetchProductStatus();  // Reload full table
+    });
+
+    // Initial load
+    fetchProductStatus();
+  </script>
+  
 </div>
 {% endblock %}

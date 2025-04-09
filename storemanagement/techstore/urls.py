@@ -45,5 +45,9 @@ urlpatterns = [
     # filter for product supplied table 
     path('store-admin/orders/ajax-stock-summary/', views.ajax_stock_summary, name='ajax_stock_summary'),
 
+    # for filter and export in dashboard first table 
+    path('dashboard/product-status/filter/', views.get_filtered_product_status, name='product_status_filter'),
+    path('dashboard/product-status/export/', views.export_product_status_csv, name='product_status_export'),
+
 
 ]
