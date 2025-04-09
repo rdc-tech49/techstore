@@ -14,60 +14,84 @@
   <div class="tab-content mt-3">
     <div class="tab-pane fade show active" id="product-status" role="tabpanel">
       <h4 class="mt-4">Product Details</h4>
-
-  <!-- Filters -->
-  <div class="row mt-3 mb-2">
-    <div class="col-md-3">
-      <input type="text" id="productSearch" class="form-control" placeholder="Search category or model">
-    </div>
-    <div class="col-md-2">
-      <input type="date" id="startDate" class="form-control">
-    </div>
-    <div class="col-md-2">
-      <input type="date" id="endDate" class="form-control">
-    </div>
-    <div class="col-md-2">
-      <button class="btn btn-success w-100" id="exportCSV">Export CSV</button>
-    </div>
-    <div class="col-md-2">
-      <button class="btn btn-secondary w-100" id="clearFilters">Clear</button>
-    </div>
-  </div>
+      <!-- Filters -->
+      <div class="row mt-3 mb-2">
+        <div class="col-md-3">
+          <input type="text" id="productSearch" class="form-control" placeholder="Search category or model">
+        </div>
+        <div class="col-md-2">
+          <input type="date" id="startDate" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <input type="date" id="endDate" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-success w-100" id="exportCSV">Export CSV</button>
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-secondary w-100" id="clearFilters">Clear</button>
+        </div>
+      </div>
   
 
-  <!-- Table -->
-  <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-    <table class="table table-bordered">
-      <thead class="table-info">
-        <tr>
-          <th>ID</th>
-          <th>Category</th>
-          <th>Model</th>
-          <th>Purchased Date</th>
-          <th>Quantity Received</th>
-          <th>Quantity Supplied</th>
-          <th>Quantity in Stock</th>
-        </tr>
-      </thead>
-      <tbody id="productStatusTableBody">
-        {% for item in product_status %}
-        <tr>
-          <td>{{ item.id }}</td>
-          <td>{{ item.category }}</td>
-          <td>{{ item.model }}</td>
-          <td>{{ item.purchased_date }}</td>
-          <td>{{ item.quantity_received }}</td>
-          <td>{{ item.quantity_supplied }}</td>
-          <td>{{ item.quantity_in_stock }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
+      <!-- Table -->
+      <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+        <table class="table table-bordered">
+          <thead class="table-info">
+            <tr>
+              <th>ID</th>
+              <th>Category</th>
+              <th>Model</th>
+              <th>Purchased Date</th>
+              <th>Quantity Received</th>
+              <th>Quantity Supplied</th>
+              <th>Quantity in Stock</th>
+            </tr>
+          </thead>
+          <tbody id="productStatusTableBody">
+            {% for item in product_status %}
+            <tr>
+              <td>{{ item.id }}</td>
+              <td>{{ item.category }}</td>
+              <td>{{ item.model }}</td>
+              <td>{{ item.purchased_date }}</td>
+              <td>{{ item.quantity_received }}</td>
+              <td>{{ item.quantity_supplied }}</td>
+              <td>{{ item.quantity_in_stock }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
     
     
-    <div class="tab-pane fade" id="report">...report content...</div>
+    <div class="tab-pane fade" id="report" role="tabpanel">
+      {% comment %} chart 1  {% endcomment %}
+      <h5 class="mt-4">Total Products Received vs. Supplied</h5>
+      <canvas id="receivedVsSuppliedChart" height="100"></canvas>
+
+      {% comment %} chart 2  {% endcomment %}
+      <div class="mt-4"
+        <h5>Supply vs Stock (Per Category)</h5>
+        <div id="categoryPieCharts" class="row"></div>
+      </div>
+        
+      {% comment %} chart 3  {% endcomment %}
+      <div id="userwiseSupplyCharts" class="row"></div>
+      
+      {% comment %} chart 4  {% endcomment %}
+      <div class="row" id="userwiseSupplyBarCharts"></div>
+
+      {% comment %} chart 5  {% endcomment %}
+      <div class="mt-4">
+        <h5>Model-wise Products: Received vs. Supplied</h5>
+        <canvas id="modelBarChart" height="100"></canvas>
+      </div>
+
+
+
+    </div>
   </div>
 
   {% comment %} filter for first table  {% endcomment %}
@@ -125,6 +149,240 @@
     // Initial load
     fetchProductStatus();
   </script>
+
+  {% comment %} AJAX Script for Chart Initialization  {% endcomment %}
+  {% comment %} chart 1  {% endcomment %}
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const ctx = document.getElementById('receivedVsSuppliedChart').getContext('2d');
+    
+      let receivedVsSuppliedChart;
+    
+      function fetchChartData() {
+        fetch("{% url 'get_received_vs_supplied_data' %}")
+          .then(response => response.json())
+          .then(data => {
+            const labels = data.labels;
+            const receivedData = data.received;
+            const suppliedData = data.supplied;
+    
+            if (receivedVsSuppliedChart) {
+              receivedVsSuppliedChart.data.labels = labels;
+              receivedVsSuppliedChart.data.datasets[0].data = receivedData;
+              receivedVsSuppliedChart.data.datasets[1].data = suppliedData;
+              receivedVsSuppliedChart.update();
+            } else {
+              receivedVsSuppliedChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                  labels: labels,
+                  datasets: [
+                    {
+                      label: 'Received',
+                      data: receivedData,
+                      backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                      borderColor: 'rgba(54, 162, 235, 1)',
+                      borderWidth: 1
+                    },
+                    {
+                      label: 'Supplied',
+                      data: suppliedData,
+                      backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                      borderColor: 'rgba(255, 99, 132, 1)',
+                      borderWidth: 1
+                    }
+                  ]
+                },
+                options: {
+                  responsive: true,
+                  interaction: {
+                    mode: 'index',
+                    intersect: false,
+                  },
+                  plugins: {
+                    tooltip: {
+                      enabled: true
+                    }
+                  },
+                  scales: {
+                    y: {
+                      beginAtZero: true
+                    }
+                  }
+                }
+              });
+            }
+          });
+      }
+    
+      fetchChartData();
+    });
+  </script>
+
+  {% comment %} chart 2  {% endcomment %}
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      fetch('/get_supply_vs_stock_data/')
+        .then(response => response.json())
+        .then(result => {
+          const container = document.getElementById("categoryPieCharts");
+          container.innerHTML = '';
+    
+          result.data.forEach((item, index) => {
+            const canvasId = 'pieChart_' + index;
+    
+            const col = document.createElement('div');
+            col.className = 'col-md-4';
+            col.innerHTML = `
+              <h6 class="text-center">${item.category} (${item.received})</h6>
+              <canvas id="${canvasId}" height="200"></canvas>
+            `;
+            container.appendChild(col);
+    
+            new Chart(document.getElementById(canvasId), {
+              type: 'pie',
+              data: {
+                labels: ['Supplied', 'In Stock'],
+                datasets: [{
+                  data: [item.supplied, item.in_stock],
+                  backgroundColor: ['#f87979', '#7acbff']
+                }]
+              },
+              options: {
+                responsive: true,
+                plugins: {
+                  legend: { position: 'bottom' },
+                  tooltip: { mode: 'index', intersect: false }
+                }
+              }
+            });
+          });
+        });
+    });
+  </script>
   
+  {% comment %} chart 3   {% endcomment %}
+  <script>
+    function loadUserwiseSupplyCharts() {
+        fetch("{% url 'get_categorywise_userwise_supply_data' %}")
+            .then(response => response.json())
+            .then(data => {
+                const chartContainer = document.getElementById("userwiseSupplyCharts");
+                chartContainer.innerHTML = "";
+    
+                data.data.forEach((entry, index) => {
+                    const canvasId = `pieChart_${index}`;
+                    const title = `${entry.category}`;
+    
+                    const chartCard = `
+                        <div class="col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-header text-center fw-bold">${title}</div>
+                                <div class="card-body">
+                                    <canvas id="${canvasId}" height="200"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    chartContainer.insertAdjacentHTML('beforeend', chartCard);
+    
+                    // Check if "Not Supplied" exists to apply a special color
+                    const colors = generateColors(entry.labels.length);
+                    const notSuppliedIndex = entry.labels.findIndex(label => label === "Not Supplied");
+                    if (notSuppliedIndex !== -1) {
+                        colors[notSuppliedIndex] = '#e5e7eb'; // Light gray for Not Supplied
+                    }
+    
+                    const ctx = document.getElementById(canvasId).getContext('2d');
+                    new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: entry.labels,
+                            datasets: [{
+                                data: entry.data,
+                                backgroundColor: colors,
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return `${context.label}: ${context.parsed}`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                });
+            });
+    }
+    
+    function generateColors(count) {
+        const baseColors = [
+            '#f87171', '#60a5fa', '#34d399', '#fbbf24',
+            '#a78bfa', '#fb923c', '#f472b6', '#2dd4bf',
+            '#c084fc', '#4ade80', '#818cf8', '#facc15'
+        ];
+        return Array.from({ length: count }, (_, i) => baseColors[i % baseColors.length]);
+    }
+    
+    document.addEventListener('DOMContentLoaded', loadUserwiseSupplyCharts);
+    </script>
+    
+
+    
+  {% comment %} chart 5 {% endcomment %}
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      fetch("/get_modelwise_received_vs_supplied/")
+        .then(response => response.json())
+        .then(data => {
+          const ctx = document.getElementById("modelBarChart").getContext("2d");
+    
+          new Chart(ctx, {
+            type: "bar",
+            data: {
+              labels: data.models,
+              datasets: [
+                {
+                  label: "Received",
+                  backgroundColor: "#4CAF50",
+                  data: data.received
+                },
+                {
+                  label: "Supplied",
+                  backgroundColor: "#FF9800",
+                  data: data.supplied
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              plugins: {
+                tooltip: { mode: 'index', intersect: false },
+                legend: { position: 'top' }
+              },
+              scales: {
+                x: {
+                  title: { display: true, text: "Model" },
+                  ticks: { autoSkip: false, maxRotation: 90, minRotation: 45 }
+                },
+                y: {
+                  beginAtZero: true,
+                  title: { display: true, text: "Quantity" }
+                }
+              }
+            }
+          });
+        });
+    });
+  </script>
+          
+      
+
 </div>
 {% endblock %}

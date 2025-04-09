@@ -165,38 +165,38 @@
 
       <hr>
 
-  <h5 class="mt-4">Existing Categories</h5>
-  <div class="mb-3">
-    <input type="text" id="categoryFilter" class="form-control" placeholder="Search categories...">
-  </div>
-  <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+      <h5 class="mt-4">Existing Categories</h5>
+      <div class="mb-3">
+        <input type="text" id="categoryFilter" class="form-control" placeholder="Search categories...">
+      </div>
+      <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
 
-    <table class="table table-bordered mt-2" id="categoryTable">
-      <thead class="table-info">
-        <tr>
-          <th scope="col">#</th>
-          <th scope="col">Category Name</th>
-          <th scope="col">Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for category in categories %}
-        <tr>
-          <td>{{ forloop.counter }}</td>
-          <td>{{ category.name }}</td>
-          <td>
-            <a href="?edit_category={{ category.id }}&category_name={{ category.name }}#create" class="btn btn-sm btn-warning">Edit</a>
-          </td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td colspan="3">No categories added yet.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  </div>
+        <table class="table table-bordered mt-2" id="categoryTable">
+          <thead class="table-info">
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">Category Name</th>
+              <th scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for category in categories %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ category.name }}</td>
+              <td>
+                <a href="?edit_category={{ category.id }}&category_name={{ category.name }}#create" class="btn btn-sm btn-warning">Edit</a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="3">No categories added yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
     
   </div>
 </div>
