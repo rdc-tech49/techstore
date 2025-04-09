@@ -22,29 +22,31 @@
           <div class="alert alert-{{ message.tags }}">{{ message }}</div>
         {% endfor %}
       {% endif %}
-  <table class="table table-bordered">
-    <thead class="table-info">
-      <tr>
-        <th>ID</th>
-        <th>Username</th>
-        <th>Email</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for user in users %}
+  <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+    <table class="table table-bordered">
+      <thead class="table-info">
         <tr>
-          <td>{{ user.id }}</td>
-          <td>{{ user.username }}</td>
-          <td>{{ user.email }}</td>
-          <td>
-            <a href="?edit_user={{ user.id }}#create" class="btn btn-sm btn-warning">Edit</a>
-            <a href="{% url 'delete_user' user.id %}" onclick="return confirm('Are you sure?')" class="btn btn-sm btn-danger">Delete</a>
-          </td>
+          <th>ID</th>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Action</th>
         </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        {% for user in users %}
+          <tr>
+            <td>{{ user.id }}</td>
+            <td>{{ user.username }}</td>
+            <td>{{ user.email }}</td>
+            <td>
+              <a href="?edit_user={{ user.id }}#create" class="btn btn-sm btn-warning">Edit</a>
+              <a href="{% url 'delete_user' user.id %}" onclick="return confirm('Are you sure?')" class="btn btn-sm btn-danger">Delete</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 
 <!-- Create/Edit User Tab -->

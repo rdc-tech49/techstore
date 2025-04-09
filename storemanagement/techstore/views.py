@@ -296,6 +296,18 @@ def orders_view(request):
         for product in products
     }
 
+    products_to_supply = []
+    for product in products:
+        total_supplied = supplied_dict.get(product.id, 0)
+        remaining_quantity = max(product.quantity - total_supplied, 0)
+        if remaining_quantity > 0:
+            products_to_supply.append({
+                'category_name': product.category.name,
+                'model': product.model,
+                'purchased_date': product.purchased_date,
+                'remaining_quantity': remaining_quantity,
+            })
+
     # Filters
     search = request.GET.get('search', '').strip()
     start_date = request.GET.get('start_date')
@@ -440,6 +452,7 @@ def orders_view(request):
         'available_quantities': available_quantities,
         'edit_order': edit_order,
         'max_quantity_range': max_quantity_range,
+        'products_to_supply': products_to_supply,  # 👈 new context
     }
     return render(request, 'techstore/store_admin_supplyorders.html', context)
 
