@@ -19,6 +19,8 @@ from datetime import datetime
 from io import StringIO
 from django.utils.dateformat import DateFormat
 from django.utils.formats import date_format
+from django.template.loader import render_to_string
+from django.utils.html import escape  # For HTML safety
 
 def home(request):
     if request.method == 'POST':
@@ -297,22 +299,23 @@ def orders_view(request):
     available_quantities = {product.id: max(product.quantity - supplied_dict.get(product.id, 0), 0)
                             for product in products}
 
-    # ===== Filters for Products to be Supplied Table =====
+    
     product_search = request.GET.get('product_search', '').strip()
     product_start_date = request.GET.get('product_start_date')
     product_end_date = request.GET.get('product_end_date')
+    product_export = request.GET.get('product_export')
 
     products_to_supply = []
     for product in products:
         total_supplied = supplied_dict.get(product.id, 0)
         remaining_quantity = max(product.quantity - total_supplied, 0)
         if remaining_quantity > 0:
-            # Apply search filter if provided
+            # Search filter
             if product_search:
                 if (product.category.name.lower().find(product_search.lower()) == -1 and
                     product.model.lower().find(product_search.lower()) == -1):
                     continue
-            # Apply date range filter if provided
+            # Date filters
             if product_start_date:
                 try:
                     start = datetime.strptime(product_start_date, '%Y-%m-%d').date()
@@ -331,9 +334,62 @@ def orders_view(request):
             products_to_supply.append({
                 'category_name': product.category.name,
                 'model': product.model,
-                'purchased_date': product.purchased_date,
+                'purchased_date': product.purchased_date.strftime('%Y-%m-%d'),
                 'remaining_quantity': remaining_quantity,
             })
+
+    # CSV Export
+    if product_export == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="products_to_be_supplied.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['Category', 'Model', 'Purchased Date', 'Quantity to be Supplied'])
+        for item in products_to_supply:
+            writer.writerow([
+                item['category_name'],
+                item['model'],
+                item['purchased_date'],
+                item['remaining_quantity'],
+            ])
+        return response
+
+    # AJAX CSV export for "Products to be Supplied"
+    if product_export == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="products_to_be_supplied.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['Category', 'Model', 'Purchased Date', 'Quantity to be Supplied'])
+        for item in products_to_supply:
+            writer.writerow([
+                item['category_name'],
+                item['model'],
+                item['purchased_date'],
+                item['remaining_quantity'],
+            ])
+        return response
+
+    # AJAX live filtering response (return HTML table rows directly)
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' and request.GET.get('product_live') == 'true':
+        table_html = ""
+        if products_to_supply:
+            for i, item in enumerate(products_to_supply, 1):
+                table_html += f"""
+                    <tr>
+                        <td>{i}</td>
+                        <td>{escape(item['category_name'])}</td>
+                        <td>{escape(item['model'])}</td>
+                        <td>{escape(item['purchased_date'])}</td>
+                        <td>{item['remaining_quantity']}</td>
+                    </tr>
+                """
+        else:
+            table_html = """
+                <tr>
+                    <td colspan="5">All products are fully supplied.</td>
+                </tr>
+            """
+        return HttpResponse(table_html)
+    
 
     # ===== Filters for Supply Orders (Stock Summary) Table =====
     search = request.GET.get('search', '').strip()

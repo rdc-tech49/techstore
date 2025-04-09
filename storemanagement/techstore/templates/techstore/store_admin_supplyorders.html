@@ -93,54 +93,58 @@
       <hr>
 
       <h4 class="mt-5">Products to be Supplied</h4>
-      <form method="get" class="row g-3 mb-2">
-        <div class="col-md-3">
-          <input type="text" name="product_search" class="form-control" placeholder="Search category or model" value="{{ product_search }}">
+
+      <form id="productsFilterForm" class="row g-2 align-items-end mb-2">
+        <div class="row g-2 mb-2">
+          <div class="col-md-3">
+            <input type="text" class="form-control" id="productSearchInput" placeholder="Search category/model">
+          </div>
+          <div class="col-md-3">
+            <input type="date" class="form-control" id="productStartDate">
+          </div>
+          <div class="col-md-3">
+            <input type="date" class="form-control" id="productEndDate">
+          </div>
+          <div class="col-md-3 d-flex gap-2">
+            
+            <button class="btn btn-secondary" id="clearProductFiltersBtn">Clear</button>
+          </div>
         </div>
-        <div class="col-md-2">
-          <input type="date" name="product_start_date" class="form-control" value="{{ product_start_date }}">
-        </div>
-        <div class="col-md-2">
-          <input type="date" name="product_end_date" class="form-control" value="{{ product_end_date }}">
-        </div>
-        <div class="col-md-2">
-          <button type="submit" class="btn btn-outline-primary w-100">Filter</button>
-        </div>
-        <div class="col-md-1">
-          <a href="{% url 'store_admin_orders' %}#products-to-supply" class="btn btn-outline-secondary w-100">Clear</a>
-        </div>
-        <div class="col-md-2">
-          <a href="?{% if product_search %}product_search={{ product_search }}&{% endif %}{% if product_start_date %}product_start_date={{ product_start_date }}&{% endif %}{% if product_end_date %}product_end_date={{ product_end_date }}&{% endif %}product_export=csv"  class="btn btn-success">Export CSV</a>
-        </div>
+        
       </form>
-      <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-        <table class="table table-bordered mt-2">
-          <thead class="table-warning">
-            <tr>
-              <th>#</th>
-              <th>Category</th>
-              <th>Model</th>
-              <th>Purchased Date</th>
-              <th>Quantity to be Supplied</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in products_to_supply %}
-            <tr>
-              <td>{{ forloop.counter }}</td>
-              <td>{{ item.category_name }}</td>
-              <td>{{ item.model }}</td>
-              <td>{{ item.purchased_date }}</td>
-              <td>{{ item.remaining_quantity }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="5">All products are fully supplied.</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+
+      <div id="productsToBeSuppliedTable">
+        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+          <table class="table table-bordered mt-2">
+            <thead class="table-warning">
+              <tr>
+                <th>#</th>
+                <th>Category</th>
+                <th>Model</th>
+                <th>Purchased Date</th>
+                <th>Quantity to be Supplied</th>
+              </tr>
+            </thead>
+            <tbody id="productsToBeSuppliedTableBody">
+              {% for item in products_to_supply %}
+              <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ item.category_name }}</td>
+                <td>{{ item.model }}</td>
+                <td>{{ item.purchased_date }}</td>
+                <td>{{ item.remaining_quantity }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="5">All products are fully supplied.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
+      <button class="btn btn-success" id="productExportBtn">Export CSV</button>
+      <hr>
 
     </div>
   
@@ -193,9 +197,7 @@
             </select>
 
             
-    {% comment %} <select name="quantity" id="quantitySelect" class="form-select" required>
-      <option value="">-- Select Model First --</option>
-    </select> {% endcomment %}
+
             
           </div>
           <div class="col">
@@ -371,8 +373,69 @@
           fetchFilteredData();  // Load initial data
       });
       </script>
+
+      {% comment %} filter for second table  {% endcomment %}
+      <script>
+        function fetchFilteredProducts() {
+          const search = document.getElementById('productSearchInput').value;
+          const startDate = document.getElementById('productStartDate').value;
+          const endDate = document.getElementById('productEndDate').value;
       
-</div>
+          const params = new URLSearchParams({
+            product_search: search,
+            product_start_date: startDate,
+            product_end_date: endDate,
+            product_live: 'true'  // to trigger the AJAX response
+          });
+      
+          fetch(`?${params.toString()}`, {
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          })
+          .then(response => response.text())
+          .then(html => {
+            document.getElementById('productsToBeSuppliedTableBody').innerHTML = html;
+          })
+          .catch(error => {
+            console.error('Error fetching filtered products:', error);
+          });
+        }
+      
+        // Auto filter on typing and date change
+        document.getElementById('productSearchInput').addEventListener('input', fetchFilteredProducts);
+        document.getElementById('productStartDate').addEventListener('change', fetchFilteredProducts);
+        document.getElementById('productEndDate').addEventListener('change', fetchFilteredProducts);
+      
+        // Export button
+        document.getElementById('productExportBtn').addEventListener('click', function () {
+          const search = document.getElementById('productSearchInput').value;
+          const startDate = document.getElementById('productStartDate').value;
+          const endDate = document.getElementById('productEndDate').value;
+      
+          const params = new URLSearchParams({
+            product_search: search,
+            product_start_date: startDate,
+            product_end_date: endDate,
+            product_export: 'csv'
+          });
+      
+          window.location.href = `?${params.toString()}`;
+        });
+      
+        // Clear button
+        document.getElementById('clearProductFiltersBtn').addEventListener('click', function () {
+          document.getElementById('productSearchInput').value = '';
+          document.getElementById('productStartDate').value = '';
+          document.getElementById('productEndDate').value = '';
+          fetchFilteredProducts();
+        });
+      </script>
+      
+
+
+
+  </div>
 
 
 {% endblock %}
