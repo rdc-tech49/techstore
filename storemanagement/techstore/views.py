@@ -9,7 +9,7 @@ from django.urls import reverse_lazy, reverse
 from django.contrib.auth.decorators import login_required
 # Create your views here.
 from django.contrib.auth.models import User
-from .models import ProductCategory, Product, SupplyOrder
+from .models import ProductCategory, Product, SupplyOrder, LoanRegister
 from django.http import HttpResponseRedirect, JsonResponse, HttpResponse
 from django.core.files.storage import FileSystemStorage
 import csv
@@ -22,6 +22,7 @@ from django.utils.formats import date_format
 from django.template.loader import render_to_string
 from django.utils.html import escape  # For HTML safety
 from collections import defaultdict
+from django.utils.dateparse import parse_date
 
 def home(request):
     if request.method == 'POST':
@@ -33,7 +34,7 @@ def home(request):
             login(request, user)
 
             if user.is_superuser:
-                return redirect('store_admin')  # URL name for admin dashboard
+                return redirect('store_admin_dashboard')  # URL name for admin dashboard
             else:
                 return redirect('store_user')   # URL name for regular user dashboard
         else:
@@ -94,9 +95,10 @@ def logout_view(request):
     return redirect('home')  # Replace 'login' with the name or path to your login page
 
 @login_required
-def home_view(request):
-    return render(request, 'techstore/store_admin_home.html')
+def loan_register_view(request):
+    return render(request, 'techstore/store_admin_loanregister.html')
 
+ 
 @login_required
 def dashboard_view(request):
     # Get all products

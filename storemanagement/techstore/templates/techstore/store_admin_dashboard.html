@@ -14,7 +14,7 @@
   <div class="tab-content mt-3">
     <div class="tab-pane fade show active" id="product_status" role="tabpanel">
       <h4 class="mt-4">Product Details</h4>
-      <!-- Filters -->
+      <!--first table Filters -->
       <div class="row mt-3 mb-2">
         <div class="col-md-3">
           <input type="text" id="productSearch" class="form-control" placeholder="Search category or model">
@@ -32,7 +32,7 @@
           <button class="btn btn-secondary w-100" id="clearFilters">Clear</button>
         </div>
       </div>
-      <!-- Table -->
+      <!-- first Table -->
       <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
         <table class="table table-bordered">
           <thead class="table-info">
@@ -63,22 +63,37 @@
       </div>
 
       <hr>
+      {% comment %} second heading  {% endcomment %}
       <h5 class="mt-5 mb-3">Product Summary by Category</h5>
-<div class="table-responsive">
-  <table class="table table-bordered table-striped" id="productSummaryByCategory">
-    <thead class="table-success">
-      <tr>
-        <th>Category</th>
-        <th>Quantity Received</th>
-        <th>Quantity Supplied</th>
-        <th>Quantity In Stock</th>
-      </tr>
-    </thead>
-    <tbody id="summaryCategoryBody">
-      <tr><td colspan="4" class="text-center">Loading...</td></tr>
-    </tbody>
-  </table>
-</div>
+      {% comment %} filter fo rsecond table  {% endcomment %}
+      <div class="row mb-3">
+        <div class="col-md-4">
+          <input type="text" id="summaryCategorySearch" class="form-control" placeholder="Search by Category...">
+        </div>
+        <div class="col-md-4">
+          <button class="btn btn-success" id="exportSummaryCsvBtn">Export to CSV</button>
+          <button class="btn btn-secondary" id="clearSummaryFilterBtn">Clear</button>
+        </div>
+      </div>
+      
+      {% comment %} second table  {% endcomment %}
+      <div class="table-responsive">
+        <table class="table table-bordered" id="productSummaryByCategory">
+          <thead class="table-danger">
+            <tr>
+              <th>Category</th>
+              <th>Quantity Received</th>
+              <th>Quantity Supplied</th>
+              <th>Quantity In Stock</th>
+            </tr>
+          </thead>
+          <tbody id="summaryCategoryBody">
+            <tr><td colspan="4" class="text-center">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+
 
     </div>
     
@@ -184,31 +199,69 @@
 
   {% comment %} second table  {% endcomment %}
   <script>
-    function fetchProductSummaryByCategory() {
-      fetch('/dashboard/product-status/summary-category/')
-        .then(response => response.json())
-        .then(json => {
+    function fetchProductSummaryByCategoryFiltered(category = "", exportCSV = false) {
+      const url = new URL('/dashboard/product-status/summary-category/', window.location.origin);
+      if (category) url.searchParams.append('category', category);
+      if (exportCSV) url.searchParams.append('export', '1');
+    
+      fetch(url)
+        .then(response => {
+          if (exportCSV) return response.blob(); // CSV blob
+          return response.json();
+        })
+        .then(data => {
+          if (exportCSV) {
+            const a = document.createElement('a');
+            a.href = window.URL.createObjectURL(data);
+            a.download = 'product_summary_by_category.csv';
+            a.click();
+            return;
+          }
+    
           const tbody = document.getElementById('summaryCategoryBody');
           tbody.innerHTML = "";
     
-          if (json.data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center">No data available</td></tr>`;
-          } else {
-            json.data.forEach(row => {
-              tbody.innerHTML += `
-                <tr>
-                  <td>${row.category}</td>
-                  <td>${row.quantity_received}</td>
-                  <td>${row.quantity_supplied}</td>
-                  <td>${row.quantity_in_stock}</td>
-                </tr>`;
-            });
+          if (!data.data.length) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center">No matching records</td></tr>`;
+            return;
           }
+    
+          data.data.forEach(row => {
+            tbody.innerHTML += `
+              <tr>
+                <td>${row.category}</td>
+                <td>${row.quantity_received}</td>
+                <td>${row.quantity_supplied}</td>
+                <td>${row.quantity_in_stock}</td>
+              </tr>`;
+          });
         });
     }
     
-    // Call it on page load or when product status is fetched
-    document.addEventListener('DOMContentLoaded', fetchProductSummaryByCategory);
+    document.addEventListener('DOMContentLoaded', () => {
+      const searchInput = document.getElementById('summaryCategorySearch');
+      const exportBtn = document.getElementById('exportSummaryCsvBtn');
+      const clearBtn = document.getElementById('clearSummaryFilterBtn');
+    
+      // Live search
+      searchInput.addEventListener('input', () => {
+        fetchProductSummaryByCategoryFiltered(searchInput.value);
+      });
+    
+      // Export filtered CSV
+      exportBtn.addEventListener('click', () => {
+        fetchProductSummaryByCategoryFiltered(searchInput.value, true);
+      });
+    
+      // Clear filter
+      clearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        fetchProductSummaryByCategoryFiltered();
+      });
+    
+      // Initial load
+      fetchProductSummaryByCategoryFiltered();
+    });
     
   </script>
   {% comment %} Chart.js for the first chart & second - stacked bar chart for received vs supplied  {% endcomment %}
