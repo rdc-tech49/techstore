@@ -29,6 +29,7 @@ urlpatterns = [
     path('loan-product-to-user/', views.loan_product_to_user, name='loan_product_to_user'),
     path('get-models-by-category/<int:category_id>/', views.get_models_by_category, name='get_models_by_category'),
     path('get-available-loan-quantity/<int:model_id>/', views.get_available_loan_quantity, name='get_available_loan_quantity'),
+    path('filter-loan-records/', views.filter_loan_records, name='filter_loan_records'),
 
 
 

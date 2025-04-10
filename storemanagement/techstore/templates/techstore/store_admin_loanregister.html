@@ -21,8 +21,25 @@
     <!-- Tab 1: Display Loan Records -->
     <div class="tab-pane fade show active" id="tab1" role="tabpanel">
       <h3 class="mb-4">Products given in loan</h3>
+      <div class="mb-3 row">
+        <div class="col-md-4">
+          <input type="text" id="loan-search" class="form-control" placeholder="Search category, model or person...">
+        </div>
+        <div class="col-md-2">
+          <input type="date" id="loan-start-date" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <input type="date" id="loan-end-date" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <button id="loan-clear-filters" class="btn btn-secondary w-100">Clear</button>
+        </div>
+        <div class="col-md-2">
+          <a href="#" id="loan-export-csv" class="btn btn-success w-100">Export CSV</a>
+        </div>
+      </div>
       <div class="table-responsive">
-        <table class="table table-bordered ">
+        <table class="table table-bordered " id="loan-records-table">
             <thead class="table-info">
                 <tr>
                     <th>#</th>
@@ -34,7 +51,7 @@
                     <th>Received Person Name</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="loan-records-body">
                 {% if loan_records %}
                     {% for record in loan_records %}
                         <tr>
@@ -180,6 +197,40 @@
     });
     
   </script>
+
+  <script>
+    function loadLoanRecords() {
+      const search = document.getElementById('loan-search').value;
+      const start = document.getElementById('loan-start-date').value;
+      const end = document.getElementById('loan-end-date').value;
+    
+      fetch(`/filter-loan-records/?search=${search}&start=${start}&end=${end}`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      })
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById('loan-records-body').innerHTML = html;
+      });
+    }
+    
+    document.getElementById('loan-search').addEventListener('input', loadLoanRecords);
+    document.getElementById('loan-start-date').addEventListener('change', loadLoanRecords);
+    document.getElementById('loan-end-date').addEventListener('change', loadLoanRecords);
+    document.getElementById('loan-clear-filters').addEventListener('click', () => {
+      document.getElementById('loan-search').value = '';
+      document.getElementById('loan-start-date').value = '';
+      document.getElementById('loan-end-date').value = '';
+      loadLoanRecords();
+    });
+    document.getElementById('loan-export-csv').addEventListener('click', e => {
+      e.preventDefault();
+      const search = document.getElementById('loan-search').value;
+      const start = document.getElementById('loan-start-date').value;
+      const end = document.getElementById('loan-end-date').value;
+      window.location.href = `/filter-loan-records/?export=csv&search=${search}&start=${start}&end=${end}`;
+    });
+    </script>
+    
   
 </div>
 {% endblock %}

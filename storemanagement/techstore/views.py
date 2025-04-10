@@ -169,6 +169,61 @@ def get_available_loan_quantity(request, model_id):
     except Product.DoesNotExist:
         return JsonResponse({'available_quantity': 0})
  
+def filter_loan_records(request):
+    search = request.GET.get('search', '').strip()
+    start_date = request.GET.get('start')
+    end_date = request.GET.get('end')
+    export = request.GET.get('export')
+
+    records = LoanRegister.objects.select_related('category', 'model', 'supplied_to')
+
+    if search:
+        records = records.filter(
+            Q(category__name__icontains=search) |
+            Q(model__model__icontains=search) |
+            Q(supplied_to__username__icontains=search) |
+            Q(received_person_name__icontains=search)
+        )
+    if start_date:
+        records = records.filter(date_supplied__gte=start_date)
+    if end_date:
+        records = records.filter(date_supplied__lte=end_date)
+
+    if export == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="loan_products.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['Category', 'Model', 'Quantity Supplied', 'Loan Date', 'Supplied To', 'Received Person'])
+        for r in records:
+            writer.writerow([
+                r.category.name,
+                r.model.model,
+                r.quantity_supplied_in_loan,
+                r.date_supplied.strftime('%d-%m-%Y'),
+                r.supplied_to.username,
+                r.received_person_name
+            ])
+        return response
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        rows = ""
+        for i, r in enumerate(records, 1):
+            rows += f"""
+            <tr>
+            <td>{i}</td>
+            <td>{r.category.name}</td>
+            <td>{r.model.model}</td>
+            <td>{r.quantity_supplied_in_loan}</td>
+            <td>{r.date_supplied.strftime('%Y-%m-%d')}</td>
+            <td>{r.supplied_to.username}</td>
+            <td>{r.received_person_name}</td>
+            </tr>
+            """
+        return HttpResponse(rows)
+
+    return JsonResponse({'error': 'Invalid request'})
+
+
 @login_required
 def dashboard_view(request):
     # Get all products
