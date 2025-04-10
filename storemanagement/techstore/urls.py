@@ -53,7 +53,8 @@ urlpatterns = [
     # First chart - stacked bar chart for received vs supplied
     path('dashboard/chart-data/category/', views.category_chart_data, name='category_chart_data'),
 
-
+    # second chart - stacked bar chart for model vise received vs supplied
+    path('chart-data/model/', views.model_chart_data, name='model_chart_data'),
 
 
 
