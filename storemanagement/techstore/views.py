@@ -732,6 +732,31 @@ def export_product_status_csv(request):
 
     return response
 
+def product_status_summary_by_category(request):
+    # Get all categories from products
+    categories = Product.objects.values_list('category__name', flat=True).distinct()
+    data = []
+
+    for category_name in categories:
+        received_qty = Product.objects.filter(category__name=category_name).aggregate(
+            total=Sum('quantity')
+        )['total'] or 0
+
+        supplied_qty = SupplyOrder.objects.filter(category__name=category_name).aggregate(
+            total=Sum('quantity_supplied')
+        )['total'] or 0
+
+        in_stock = received_qty - supplied_qty
+
+        data.append({
+            'category': category_name,
+            'quantity_received': received_qty,
+            'quantity_supplied': supplied_qty,
+            'quantity_in_stock': in_stock,
+        })
+
+    return JsonResponse({'data': data})
+
 # First chart - stacked bar chart for received vs supplied
 def category_chart_data(request):
     categories = Product.objects.values_list('category__name', flat=True).distinct()

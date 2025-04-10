@@ -49,6 +49,9 @@ urlpatterns = [
     path('dashboard/product-status/filter/', views.get_filtered_product_status, name='product_status_filter'),
     path('dashboard/product-status/export/', views.export_product_status_csv, name='product_status_export'),
 
+    # dashboard second table 
+    path('dashboard/product-status/summary-category/', views.product_status_summary_by_category, name='product_status_summary_category'),
+
 
     # First chart - stacked bar chart for received vs supplied
     path('dashboard/chart-data/category/', views.category_chart_data, name='category_chart_data'),
