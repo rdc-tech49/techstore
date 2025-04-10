@@ -65,27 +65,6 @@
     
     
     <div class="tab-pane fade" id="charts" role="tabpanel">
-      {% comment %}       
-      <h5 class="mt-4">Total Products Received vs. Supplied</h5>
-      <canvas id="receivedVsSuppliedChart" height="100"></canvas>
-
-      
-      <div class="mt-4"
-        <h5>Supply vs Stock (Per Category)</h5>
-        <div id="categoryPieCharts" class="row"></div>
-      </div>
-        
-
-      <div id="userwiseSupplyCharts" class="row"></div>
-      
-      <div class="row" id="userwiseSupplyBarCharts"></div>
-
-      
-      <div class="mt-4">
-        <h5>Model-wise Products: Received vs. Supplied</h5>
-        <canvas id="modelBarChart" height="100"></canvas>
-      </div> {% endcomment %}
-
       {% comment %} First chart - stacked bar chart for received vs supplied  {% endcomment %}
       <div class="card mt-4">
         <div class="card-header bg-success text-white">
@@ -96,6 +75,7 @@
         </div>
       </div>
 
+      {% comment %} Second chart - stacked bar chart for received vs supplied  {% endcomment %}
       <div class="card mt-4">
         <div class="card-header bg-success text-white">
           <h5 class="mb-0">Received vs Supplied – Model-wise</h5>
@@ -164,184 +144,163 @@
     fetchProductStatus();
   </script>
 
-{% comment %} First chart - stacked bar chart for received vs supplied  {% endcomment %}
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const ctx = document.getElementById('categoryChart').getContext('2d');
-    let categoryChart;
+  {% comment %} Chart.js for the first chart - stacked bar chart for received vs supplied  {% endcomment %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+    const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+    const modelCtx = document.getElementById('modelChart').getContext('2d');
+    const modelCard = document.querySelector('#modelChart').closest('.card');
+    let categoryChart, modelChart;
 
-    function fetchChartData() {
+    function renderTooltip() {
+      return {
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          afterBody: function (tooltipItems) {
+            let received = 0, supplied = 0;
+            tooltipItems.forEach(item => {
+              if (item.dataset.label === 'Received') received = item.raw;
+              if (item.dataset.label === 'Supplied') supplied = item.raw;
+            });
+            const inStock = received - supplied;
+            return 'In Stock: ' + inStock;
+          }
+        }
+      };
+    }
+
+    function renderCategoryChart() {
       fetch("{% url 'category_chart_data' %}")
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
           const labels = data.categories;
-          const receivedData = data.received;
-          const suppliedData = data.supplied;
+          const received = data.received;
+          const supplied = data.supplied;
 
-          const chartData = {
-            labels: labels,
-            datasets: [
-              {
-                label: 'Received',
-                data: receivedData,
-                backgroundColor: 'rgba(76, 175, 80, 0.3)',  // light green
-                borderColor: 'rgba(76, 175, 80, 0.5)',
-                borderWidth: 1,
-                barThickness: 40,
-                grouped: false,
-                order: 1,
-              },
-              {
-                label: 'Supplied',
-                data: suppliedData,
-                backgroundColor: 'rgba(33, 150, 243, 0.9)',  // strong blue
-                borderColor: 'rgba(33, 150, 243, 1)',
-                borderWidth: 1,
-                barThickness: 20,
-                grouped: false,
-                order: 2,
-              }
-            ]
-          };
+          if (categoryChart) categoryChart.destroy();
 
-          const config = {
-            type: 'bar',
-            data: chartData,
-            options: {
-              responsive: true,
-              plugins: {
-                legend: { position: 'top' },
-                tooltip: {
-                  mode: 'index',
-                  intersect: false,
-                  callbacks: {
-                    afterBody: function (tooltipItems) {
-                      // Find received and supplied from tooltipItems
-                      let received = 0;
-                      let supplied = 0;
-                      tooltipItems.forEach(item => {
-                        if (item.dataset.label === 'Received') {
-                          received = item.raw;
-                        }
-                        if (item.dataset.label === 'Supplied') {
-                          supplied = item.raw;
-                        }
-                      });
-            
-                      const inStock = received - supplied;
-                      return 'In Stock: ' + inStock;
-                    }
+            categoryChart = new Chart(categoryCtx, {
+              type: 'bar',
+              data: {
+                labels,
+                datasets: [
+                  {
+                    label: 'Received',
+                    data: received,
+                    backgroundColor: 'rgba(76, 175, 80, 0.3)',
+                    borderColor: 'rgba(76, 175, 80, 0.5)',
+                    borderWidth: 1,
+                    barThickness: 40,
+                    grouped: false,
+                    order: 1,
+                  },
+                  {
+                    label: 'Supplied',
+                    data: supplied,
+                    backgroundColor: 'rgba(33, 150, 243, 0.9)',
+                    borderColor: 'rgba(33, 150, 243, 1)',
+                    borderWidth: 1,
+                    barThickness: 20,
+                    grouped: false,
+                    order: 2,
                   }
-                }
+                ]
               },
-              scales: {
-                x: { stacked: false },
-                y: {
-                  stacked: false,
-                  beginAtZero: true
-                }
-              }
-            }
-            
-          };
-
-          if (categoryChart) {
-            categoryChart.destroy();
-          }
-
-          categoryChart = new Chart(ctx, config);
-        });
-      }
-
-    fetchChartData();
-  });
-</script>
-
-{% comment %} second chart - stacked bar chart for model vise received vs supplied  {% endcomment %}
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const ctx = document.getElementById('modelChart').getContext('2d');
-    let modelChart;
-
-    function fetchModelChartData() {
-      fetch("{% url 'model_chart_data' %}")
-        .then(response => response.json())
-        .then(data => {
-          const labels = data.models;
-          const receivedData = data.received;
-          const suppliedData = data.supplied;
-
-          const chartData = {
-            labels: labels,
-            datasets: [
-              {
-                label: 'Received',
-                data: receivedData,
-                backgroundColor: 'rgba(76, 175, 80, 0.3)',
-                borderColor: 'rgba(76, 175, 80, 0.5)',
-                borderWidth: 1,
-                barThickness: 40,
-                grouped: true,
-                order: 1,
-              },
-              {
-                label: 'Supplied',
-                data: suppliedData,
-                backgroundColor: 'rgba(33, 150, 243, 0.9)',
-                borderColor: 'rgba(33, 150, 243, 1)',
-                borderWidth: 1,
-                barThickness: 20,
-                grouped: true,
-                order: 2,
-              }
-            ]
-          };
-
-          const config = {
-            type: 'bar',
-            data: chartData,
-            options: {
-              responsive: true,
-              plugins: {
-                legend: { position: 'top' },
-                tooltip: {
-                  mode: 'index',
-                  intersect: false,
-                  callbacks: {
-                    afterBody: function (tooltipItems) {
-                      let received = 0;
-                      let supplied = 0;
-                      tooltipItems.forEach(item => {
-                        if (item.dataset.label === 'Received') received = item.raw;
-                        if (item.dataset.label === 'Supplied') supplied = item.raw;
-                      });
-                      const inStock = received - supplied;
-                      return 'In Stock: ' + inStock;
-                    }
+              options: {
+                responsive: true,
+                plugins: {
+                  legend: { position: 'top' },
+                  tooltip: renderTooltip()
+                },
+                onClick: (e, elements) => {
+                  if (elements.length > 0) {
+                    const index = elements[0].index;
+                    const selectedCategory = labels[index];
+                    renderModelChart(selectedCategory);
                   }
-                }
-              },
-              scales: {
-                x: { stacked: false },
-                y: {
-                  stacked: false,
-                  beginAtZero: true
+                },
+                scales: {
+                  x: { stacked: false },
+                  y: { stacked: false, beginAtZero: true }
                 }
               }
-            }
-          };
-
-          if (modelChart) {
-            modelChart.destroy();
-          }
-
-          modelChart = new Chart(ctx, config);
+            });
         });
     }
 
-    fetchModelChartData();
-  });
-</script>
+    function renderModelChart(category) {
+      fetch(`/dashboard/model-chart-data/?category=${encodeURIComponent(category)}`)
+        .then(res => res.json())
+        .then(data => {
+          const labels = data.models;
+          const received = data.received;
+          const supplied = data.supplied;
+
+          if (modelChart) modelChart.destroy();
+
+          modelChart = new Chart(modelCtx, {
+            type: 'bar',
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: 'Received',
+                  data: received,
+                  backgroundColor: 'rgba(76, 175, 80, 0.3)',
+                  borderColor: 'rgba(76, 175, 80, 0.5)',
+                  borderWidth: 1,
+                  barThickness: 40,
+                  grouped: false,
+                  order: 1,
+                },
+                {
+                  label: 'Supplied',
+                  data: supplied,
+                  backgroundColor: 'rgba(33, 150, 243, 0.9)',
+                  borderColor: 'rgba(33, 150, 243, 1)',
+                  borderWidth: 1,
+                  barThickness: 20,
+                  grouped: false,
+                  order: 2,
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              plugins: {
+                legend: { position: 'top' },
+                tooltip: renderTooltip()
+              },
+              scales: {
+                x: { stacked: false },
+                y: { stacked: false, beginAtZero: true }
+              }
+            }
+          });
+
+          modelCard.querySelector('.card-header h5').textContent = `Received vs Supplied – Models in "${category}"`;
+          modelCard.style.display = 'block';
+
+          // Add back button
+          if (!document.getElementById('backBtn')) {
+            const backBtn = document.createElement('button');
+            backBtn.className = 'btn btn-sm btn-secondary mt-3';
+            backBtn.textContent = '← Back to Category Chart';
+            backBtn.id = 'backBtn';
+            backBtn.onclick = () => {
+              modelCard.style.display = 'none';
+              modelChart?.destroy();
+              modelCard.querySelector('.card-header h5').textContent = "Received vs Supplied – Model-wise";
+            };
+            modelCard.querySelector('.card-body').appendChild(backBtn);
+          }
+        });
+    }
+    renderCategoryChart();
+    modelCard.style.display = 'none';  // hide initially
+    });
+  </script>
 
 
 </div>

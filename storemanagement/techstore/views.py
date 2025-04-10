@@ -756,23 +756,51 @@ def category_chart_data(request):
 
 # second chart - stacked bar chart for model vise received vs supplied
 def model_chart_data(request):
-    model_entries = Product.objects.values('model', 'category__name').distinct()
+    category_name = request.GET.get('category')
+
+    # First, filter products by selected category
+    products = Product.objects.filter(category__name=category_name)
+
+    # Get unique model names within that category only
+    model_names = products.values_list('model', flat=True).distinct()
+
     data = {
-    'models': [],
-    'received': [],
-    'supplied': [],
-    'in_stock': [],
+        'models': [],
+        'received': [],
+        'supplied': [],
+        'in_stock': [],
     }
 
-    for entry in model_entries:
-        model = entry['model']
-        category_name = entry['category__name']
-        label = f"{model} ({category_name})"
+    for model in model_names:
+        received_qty = products.filter(model=model).aggregate(total=Sum('quantity'))['total'] or 0
+        supplied_qty = SupplyOrder.objects.filter(model__model=model, category__name=category_name).aggregate(total=Sum('quantity_supplied'))['total'] or 0
+        in_stock = received_qty - supplied_qty
 
+        label = f"{model}"
+        data['models'].append(label)
+        data['received'].append(received_qty)
+        data['supplied'].append(supplied_qty)
+        data['in_stock'].append(in_stock)
+
+    return JsonResponse(data)
+
+    category_name = request.GET.get('category')
+    products = Product.objects.filter(category__name=category_name).values('model').distinct()
+
+    data = {
+        'models': [],
+        'received': [],
+        'supplied': [],
+        'in_stock': [],
+    }
+
+    for item in products:
+        model = item['model']
         received_qty = Product.objects.filter(model=model, category__name=category_name).aggregate(total=Sum('quantity'))['total'] or 0
         supplied_qty = SupplyOrder.objects.filter(model__model=model, category__name=category_name).aggregate(total=Sum('quantity_supplied'))['total'] or 0
         in_stock = received_qty - supplied_qty
 
+        label = f"{model}"
         data['models'].append(label)
         data['received'].append(received_qty)
         data['supplied'].append(supplied_qty)
