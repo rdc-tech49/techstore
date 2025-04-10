@@ -68,22 +68,37 @@
       {% comment %} First chart - stacked bar chart for received vs supplied  {% endcomment %}
       <div class="card mt-4">
         <div class="card-header bg-success text-white">
-          <h5 class="mb-0">Product Quantities by Category</h5>
+          <h5 class="mb-0">Product Received and Supplied  – Category wise</h5>
         </div>
         <div class="card-body">
-          <canvas id="categoryChart" height="100"></canvas>
+          <canvas id="categoryChart" height="50" width="auto"></canvas>
         </div>
       </div>
 
       {% comment %} Second chart - stacked bar chart for received vs supplied  {% endcomment %}
       <div class="card mt-4">
         <div class="card-header bg-success text-white">
-          <h5 class="mb-0">Received vs Supplied – Model-wise</h5>
+          <h5 class="mb-0">Product Received and Supplied – Model wise</h5>
         </div>
         <div class="card-body">
-          <canvas id="modelChart" height="100"></canvas>
+          <canvas id="modelChart" height="50" width="auto"></canvas>
         </div>
       </div>
+
+        
+      {% comment %} Third chart - stacked bar chart for received vs supplied  {% endcomment %}
+      <div class="card mt-4">
+        <div class="card-header bg-info text-white">
+          <h5 class="mb-0">Category-wise Supplied to Each User</h5>
+        </div>
+        <div class="card-body">
+          <canvas id="userCategoryChart" height="120"></canvas>
+        </div>
+      </div>
+      
+      
+        
+      
 
     </div>
   </div>
@@ -301,7 +316,53 @@
     modelCard.style.display = 'none';  // hide initially
     });
   </script>
+  
+  {% comment %} Chart.js for the third chart - stacked bar chart for received vs supplied  {% endcomment %}
+  <script>
+    function fetchUserCategoryChart() {
+      fetch("{% url 'user_category_supply_chart_data' %}")
+        .then(response => response.json())
+        .then(data => {
+          const ctx = document.getElementById("userCategoryChart").getContext("2d");
+    
+          if (window.userCategoryChart && typeof window.userCategoryChart.destroy === "function") {
+            window.userCategoryChart.destroy();
+          }
+    
+          window.userCategoryChart = new Chart(ctx, {
+            type: "bar",
+            data: {
+              labels: data.users,
+              datasets: data.datasets
+            },
+            options: {
+              responsive: true,
+              plugins: {
+                legend: { position: "top" },
+                tooltip: {
+                  mode: "index",
+                  intersect: false,
+                }
+              },
+              scales: {
+                x: {
+                  stacked: false
+                },
+                y: {
+                  beginAtZero: true,
+                  stacked: false
+                }
+              }
+            }
+          });
+        });
+    }
+    document.addEventListener("DOMContentLoaded", fetchUserCategoryChart);
 
+  </script>
+  
+  
+  
 
 </div>
 {% endblock %}

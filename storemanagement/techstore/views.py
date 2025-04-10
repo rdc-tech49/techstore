@@ -784,26 +784,41 @@ def model_chart_data(request):
 
     return JsonResponse(data)
 
-    category_name = request.GET.get('category')
-    products = Product.objects.filter(category__name=category_name).values('model').distinct()
+# third chart - pie chart for product status
+# User-wise category supply
+def user_category_supply_chart_data(request):
+    # Get all distinct users and categories
+    users = SupplyOrder.objects.values_list('supplied_to__username', flat=True).distinct()
+    categories = SupplyOrder.objects.values_list('category__name', flat=True).distinct()
 
-    data = {
-        'models': [],
-        'received': [],
-        'supplied': [],
-        'in_stock': [],
-    }
+    # Create a mapping of category -> supply counts per user
+    category_data = defaultdict(lambda: [0] * len(users))
+    user_index_map = {user: i for i, user in enumerate(users)}
 
-    for item in products:
-        model = item['model']
-        received_qty = Product.objects.filter(model=model, category__name=category_name).aggregate(total=Sum('quantity'))['total'] or 0
-        supplied_qty = SupplyOrder.objects.filter(model__model=model, category__name=category_name).aggregate(total=Sum('quantity_supplied'))['total'] or 0
-        in_stock = received_qty - supplied_qty
+    for category in categories:
+        for user in users:
+            qty = SupplyOrder.objects.filter(
+                category__name=category,
+                supplied_to__username=user
+            ).aggregate(total=Sum('quantity_supplied'))['total'] or 0
 
-        label = f"{model}"
-        data['models'].append(label)
-        data['received'].append(received_qty)
-        data['supplied'].append(supplied_qty)
-        data['in_stock'].append(in_stock)
+            index = user_index_map[user]
+            category_data[category][index] = qty
 
-    return JsonResponse(data)
+    datasets = []
+    color_palette = [
+        '#4CAF50', '#2196F3', '#FFC107', '#FF5722', '#9C27B0',
+        '#3F51B5', '#009688', '#FF9800', '#E91E63', '#795548'
+    ]
+
+    for i, (category, data_list) in enumerate(category_data.items()):
+        datasets.append({
+            'label': category,
+            'data': data_list,
+            'backgroundColor': color_palette[i % len(color_palette)]
+        })
+
+    return JsonResponse({
+        'users': list(users),
+        'datasets': datasets
+    })
