@@ -24,7 +24,13 @@ urlpatterns = [
     path('profile/update/', update_user, name='update_user'),
     path('logout/', views.logout_view, name='logout'),
 
-    path('store-admin/loanregister/', views.loan_register_view, name='store_admin_loan_register_view'),
+
+    path('store-admin/loan-register/', views.store_admin_loanregister, name='store_admin_loanregister'),
+    path('loan-product-to-user/', views.loan_product_to_user, name='loan_product_to_user'),
+    path('get-models-by-category/<int:category_id>/', views.get_models_by_category, name='get_models_by_category'),
+    path('get-available-loan-quantity/<int:model_id>/', views.get_available_loan_quantity, name='get_available_loan_quantity'),
+
+
 
     path('store-admin/dashboard/', views.dashboard_view, name='store_admin_dashboard'),
     path('store-admin/products/', views.products_view, name='store_admin_products'),

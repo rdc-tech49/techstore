@@ -22,7 +22,9 @@ from django.utils.formats import date_format
 from django.template.loader import render_to_string
 from django.utils.html import escape  # For HTML safety
 from collections import defaultdict
-from django.utils.dateparse import parse_date
+from django.views.decorators.csrf import csrf_exempt
+
+
 
 def home(request):
     if request.method == 'POST':
@@ -95,9 +97,77 @@ def logout_view(request):
     return redirect('home')  # Replace 'login' with the name or path to your login page
 
 @login_required
-def loan_register_view(request):
-    return render(request, 'techstore/store_admin_loanregister.html')
+def store_admin_loanregister(request):
+    categories = ProductCategory.objects.all()
+    users = User.objects.all()
+    products = Product.objects.select_related('category').all()
+    loan_records = LoanRegister.objects.select_related('category', 'model', 'supplied_to').order_by('-date_supplied')
 
+    # Calculate available quantity per product for loan
+    supplied_totals = SupplyOrder.objects.values('model_id').annotate(total_supplied=Sum('quantity_supplied'))
+    loaned_totals = LoanRegister.objects.values('model_id').annotate(total_loaned=Sum('quantity_supplied_in_loan'))
+
+    supplied_dict = {item['model_id']: item['total_supplied'] for item in supplied_totals}
+    loaned_dict = {item['model_id']: item['total_loaned'] for item in loaned_totals}
+
+    available_for_loan = []
+    for product in products:
+        total_supplied = supplied_dict.get(product.id, 0)
+        total_loaned = loaned_dict.get(product.id, 0)
+        remaining = product.quantity - total_supplied - total_loaned
+        if remaining > 0:
+            available_for_loan.append({
+                'category': product.category.name,
+                'model': product.model,
+                'purchased_date': product.purchased_date,
+                'available_quantity': remaining
+            })
+
+    context = {
+        'categories': categories,
+        'users': users,
+        'loan_records': loan_records,
+        'available_for_loan': available_for_loan,
+    }
+    return render(request, 'techstore/store_admin_loanregister.html', context)
+
+@csrf_exempt
+def loan_product_to_user(request):
+    if request.method == 'POST':
+        category_id = request.POST['category']
+        model_id = request.POST['model']
+        quantity = int(request.POST['quantity'])
+        date_supplied = request.POST['date_supplied']
+        supplied_to_id = request.POST['supplied_to']
+        received_person_name = request.POST['received_person_name']
+
+        LoanRegister.objects.create(
+            category_id=category_id,
+            model_id=model_id,
+            quantity_supplied_in_loan=quantity,
+            date_supplied=date_supplied,
+            supplied_to_id=supplied_to_id,
+            received_person_name=received_person_name
+        )
+        return redirect('store_admin_loanregister')
+
+def get_models_by_category(request, category_id):
+    models = Product.objects.filter(category_id=category_id)
+    data = [{'id': m.id, 'model': m.model, 'quantity': m.quantity} for m in models]
+    return JsonResponse({'models': data}) 
+
+def get_available_loan_quantity(request, model_id):
+    try:
+        product = Product.objects.get(id=model_id)
+        total_quantity = product.quantity
+
+        quantity_supplied = SupplyOrder.objects.filter(model_id=model_id).aggregate(total=Sum('quantity_supplied'))['total'] or 0
+        quantity_loaned = LoanRegister.objects.filter(model_id=model_id).aggregate(total=Sum('quantity_supplied_in_loan'))['total'] or 0
+
+        available_quantity = total_quantity - quantity_supplied - quantity_loaned
+        return JsonResponse({'available_quantity': max(available_quantity, 0)})
+    except Product.DoesNotExist:
+        return JsonResponse({'available_quantity': 0})
  
 @login_required
 def dashboard_view(request):
@@ -346,10 +416,18 @@ def orders_view(request):
     supply_orders = SupplyOrder.objects.select_related('category', 'model', 'supplied_to').order_by('-supplied_date')
 
     # Available quantity calculation for Products (for dynamic quantity dropdowns)
+    # Total supplied per product
     supplied_totals = SupplyOrder.objects.values('model_id').annotate(total_supplied=Sum('quantity_supplied'))
     supplied_dict = {item['model_id']: item['total_supplied'] for item in supplied_totals}
-    available_quantities = {product.id: max(product.quantity - supplied_dict.get(product.id, 0), 0)
-                            for product in products}
+
+    # Total loaned per product
+    loaned_totals = LoanRegister.objects.values('model_id').annotate(total_loaned=Sum('quantity_supplied_in_loan'))
+    loaned_dict = {item['model_id']: item['total_loaned'] for item in loaned_totals}
+
+    # Available quantity = total received - (supplied + loaned)
+    available_quantities = {
+        product.id: max(product.quantity - supplied_dict.get(product.id, 0) - loaned_dict.get(product.id, 0), 0)
+        for product in products}
 
     
     product_search = request.GET.get('product_search', '').strip()
@@ -360,7 +438,8 @@ def orders_view(request):
     products_to_supply = []
     for product in products:
         total_supplied = supplied_dict.get(product.id, 0)
-        remaining_quantity = max(product.quantity - total_supplied, 0)
+        total_loaned = loaned_dict.get(product.id, 0)
+        remaining_quantity = max(product.quantity - total_supplied - total_loaned, 0)
         if remaining_quantity > 0:
             # Search filter
             if product_search:
@@ -522,7 +601,9 @@ def orders_view(request):
         total_supplied = supplied_dict.get(model_obj.id, 0)
         # Exclude the current order's quantity for an accurate available stock calculation
         total_supplied_excl_self = total_supplied - edit_order.quantity_supplied
-        max_available = model_obj.quantity - total_supplied_excl_self
+        # Recalculate loaned quantity too
+        total_loaned = loaned_dict.get(model_obj.id, 0)
+        max_available = model_obj.quantity - total_supplied_excl_self - total_loaned
         max_quantity_range = list(range(1, max_available + edit_order.quantity_supplied + 1))
 
     # ===== Handle POST Requests (Creation / Update) =====
@@ -574,7 +655,8 @@ def orders_view(request):
             order = get_object_or_404(SupplyOrder, id=order_id)
             # Recalculate available quantity for update: exclude this order's current quantity
             total_supplied_excl = SupplyOrder.objects.filter(model_id=model_obj.id).exclude(id=order.id).aggregate(total=Sum('quantity_supplied'))['total'] or 0
-            available_quantity = model_obj.quantity - total_supplied_excl
+            total_loaned = loaned_dict.get(model_obj.id, 0)
+            available_quantity = model_obj.quantity - total_supplied_excl - total_loaned
 
             if quantity > available_quantity:
                 messages.error(request, "Supplied quantity exceeds available stock.")
