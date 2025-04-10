@@ -732,124 +732,24 @@ def export_product_status_csv(request):
 
     return response
 
-# chart 1
-def get_received_vs_supplied_data(request):
-    received_data = defaultdict(int)
-    supplied_data = defaultdict(int)
-
-    # Group received quantity by category
-    for product in Product.objects.select_related('category'):
-        category_name = product.category.name
-        received_data[category_name] += product.quantity
-
-    # Group supplied quantity by category
-    for order in SupplyOrder.objects.select_related('category'):
-        category_name = order.category.name
-        supplied_data[category_name] += order.quantity_supplied
-
-    # Combine all unique categories
-    labels = sorted(set(received_data.keys()) | set(supplied_data.keys()))
-    received = [received_data.get(label, 0) for label in labels]
-    supplied = [supplied_data.get(label, 0) for label in labels]
-
-    return JsonResponse({
-        'labels': labels,
-        'received': received,
-        'supplied': supplied,
-    })
-
-# chart 2 
-def get_supply_vs_stock_data(request):
-    category_received = defaultdict(int)
-    category_supplied = defaultdict(int)
-
-    for product in Product.objects.select_related('category'):
-        category_name = product.category.name
-        category_received[category_name] += product.quantity
-
-    for order in SupplyOrder.objects.select_related('category'):
-        category_name = order.category.name
-        category_supplied[category_name] += order.quantity_supplied
-
-    categories = sorted(set(category_received.keys()) | set(category_supplied.keys()))
-
-    data = []
-    for cat in categories:
-        received = category_received.get(cat, 0)
-        supplied = category_supplied.get(cat, 0)
-        in_stock = max(received - supplied, 0)
-        data.append({
-            'category': cat,
-            'received': received,
-            'supplied': supplied,
-            'in_stock': in_stock
-        })
-
-    return JsonResponse({'data': data})
-
-# chart 3 
-def get_categorywise_userwise_supply_data(request):
-    # Total quantity received per category
-    total_received_per_category = defaultdict(int)
-    for product in Product.objects.select_related('category'):
-        total_received_per_category[product.category.name] += product.quantity
-
-    # Supplied quantity per category per user
-    category_data = defaultdict(lambda: defaultdict(int))  # {category: {username: qty}}
-    for order in SupplyOrder.objects.select_related('category', 'supplied_to'):
-        category_data[order.category.name][order.supplied_to.username] += order.quantity_supplied
-
-    result = []
-
-    for category, user_data in category_data.items():
-        labels = list(user_data.keys())
-        values = list(user_data.values())
-
-        total_supplied = sum(values)
-        total_received = total_received_per_category.get(category, 0)
-        not_supplied = total_received - total_supplied
-
-        if not_supplied > 0:
-            labels.append("Not Supplied")
-            values.append(not_supplied)
-
-        result.append({
-            'category': f"{category} ({total_received})",
-            'labels': labels,
-            'data': values,
-        })
-
-    return JsonResponse({'data': result})
-
-# chart 4 
-def get_modelwise_received_vs_supplied(request):
-    received_data = defaultdict(int)
-    supplied_data = defaultdict(int)
-    model_category_map = {}
-
-    # Aggregate received data and map model to category
-    for product in Product.objects.all():
-        key = f"{product.model} ({product.category.name})"
-        received_data[key] += product.quantity
-        model_category_map[product.model] = product.category.name
-
-    # Aggregate supplied data
-    for order in SupplyOrder.objects.all():
-        category_name = model_category_map.get(order.model.model, "Unknown")
-        key = f"{order.model.model} ({category_name})"
-        supplied_data[key] += order.quantity_supplied
-
-    all_keys = sorted(set(received_data.keys()) | set(supplied_data.keys()))
-
+# First chart - stacked bar chart for received vs supplied
+def category_chart_data(request):
+    categories = Product.objects.values_list('category__name', flat=True).distinct()
     data = {
-        'models': [],
+        'categories': [],
         'received': [],
         'supplied': [],
+        'in_stock': [],
     }
 
-    for key in all_keys:
-        data['models'].append(key)
-        data['received'].append(received_data.get(key, 0))
-        data['supplied'].append(supplied_data.get(key, 0))
+    for category_name in categories:
+        received_qty = Product.objects.filter(category__name=category_name).aggregate(total=Sum('quantity'))['total'] or 0
+        supplied_qty = SupplyOrder.objects.filter(category__name=category_name).aggregate(total=Sum('quantity_supplied'))['total'] or 0
+        in_stock = received_qty - supplied_qty
+
+        data['categories'].append(category_name)
+        data['received'].append(received_qty)
+        data['supplied'].append(supplied_qty)
+        data['in_stock'].append(in_stock)
 
     return JsonResponse(data)

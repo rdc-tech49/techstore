@@ -49,15 +49,11 @@ urlpatterns = [
     path('dashboard/product-status/filter/', views.get_filtered_product_status, name='product_status_filter'),
     path('dashboard/product-status/export/', views.export_product_status_csv, name='product_status_export'),
 
-    # first chart 
-    path('get-received-vs-supplied-data/', views.get_received_vs_supplied_data, name='get_received_vs_supplied_data'),
-    # chart 2 
-    path('get_supply_vs_stock_data/', views.get_supply_vs_stock_data, name='get_supply_vs_stock_data'),
-    # chart 3 
-    path('report/userwise-supply/', views.get_categorywise_userwise_supply_data, name='get_categorywise_userwise_supply_data'),
 
-    # chart 4
-    path('get_modelwise_received_vs_supplied/', views.get_modelwise_received_vs_supplied, name='get_modelwise_received_vs_supplied'),
+    # First chart - stacked bar chart for received vs supplied
+    path('dashboard/chart-data/category/', views.category_chart_data, name='category_chart_data'),
+
+
 
 
 
