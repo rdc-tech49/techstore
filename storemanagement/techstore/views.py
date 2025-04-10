@@ -226,29 +226,39 @@ def filter_loan_records(request):
 
 @login_required
 def dashboard_view(request):
-    # Get all products
+    # Get all products (ordered by ID descending for example)
     products = Product.objects.all().order_by('-id')
 
-    # Get total quantity supplied per model
+    # Aggregate SupplyOrder data grouped by product model
     supply_data = SupplyOrder.objects.values('model__model').annotate(
         total_supplied=Sum('quantity_supplied')
     )
     supplied_dict = {item['model__model']: item['total_supplied'] for item in supply_data}
 
-    # Prepare product status list
+    # Aggregate LoanRegister data grouped by product model (quantity given in loan)
+    loan_data = LoanRegister.objects.values('model__model').annotate(
+        total_loaned=Sum('quantity_supplied_in_loan')
+    )
+    loaned_dict = {item['model__model']: item['total_loaned'] for item in loan_data}
+
+    # Prepare product status list with the new column
     product_status = []
     for product in products:
+        # Note: product.model is assumed to be a string (model name)
         supplied_qty = supplied_dict.get(product.model, 0)
-        stock_qty = product.quantity - supplied_qty
+        loaned_qty = loaned_dict.get(product.model, 0)
+        quantity_received = product.quantity
+        quantity_in_stock = quantity_received - (supplied_qty + loaned_qty)
 
         product_status.append({
             'id': product.id,
             'category': product.category.name,
             'model': product.model,
-            'purchased_date': product.purchased_date,
-            'quantity_received': product.quantity,
+            'purchased_date': product.purchased_date.strftime('%Y-%m-%d'),
+            'quantity_received': quantity_received,
             'quantity_supplied': supplied_qty,
-            'quantity_in_stock': stock_qty,
+            'quantity_given_in_loan': loaned_qty,
+            'quantity_in_stock': quantity_in_stock,
         })
 
     context = {
@@ -872,11 +882,17 @@ def export_product_status_csv(request):
     return response
 
 def product_status_summary_by_category(request):
-    # Get all categories from products
-    categories = Product.objects.values_list('category__name', flat=True).distinct()
-    data = []
+    # Get all distinct categories from products that have a supply record
+    category_filter = request.GET.get('category', '').strip().lower()
+    export_csv = request.GET.get('export') == '1'
 
+    categories = Product.objects.values_list('category__name', flat=True).distinct()
+
+    data = []
     for category_name in categories:
+        if category_filter and category_filter not in category_name.lower():
+            continue
+
         received_qty = Product.objects.filter(category__name=category_name).aggregate(
             total=Sum('quantity')
         )['total'] or 0
@@ -885,14 +901,34 @@ def product_status_summary_by_category(request):
             total=Sum('quantity_supplied')
         )['total'] or 0
 
-        in_stock = received_qty - supplied_qty
+        loaned_qty = LoanRegister.objects.filter(category__name=category_name).aggregate(
+            total=Sum('quantity_supplied_in_loan')
+        )['total'] or 0
+
+        in_stock = received_qty - (supplied_qty + loaned_qty)
 
         data.append({
             'category': category_name,
             'quantity_received': received_qty,
             'quantity_supplied': supplied_qty,
+            'quantity_loaned': loaned_qty,
             'quantity_in_stock': in_stock,
         })
+
+    if export_csv:
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="product_summary_by_category.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['Category', 'Quantity Received', 'Quantity Supplied', 'Quantity Supplied in Loan', 'Quantity in Stock'])
+        for row in data:
+            writer.writerow([
+                row['category'],
+                row['quantity_received'],
+                row['quantity_supplied'],
+                row['quantity_loaned'],
+                row['quantity_in_stock']
+            ])
+        return response
 
     return JsonResponse({'data': data})
 

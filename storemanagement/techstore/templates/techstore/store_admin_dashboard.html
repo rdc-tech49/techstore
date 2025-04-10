@@ -34,7 +34,7 @@
       </div>
       <!-- first Table -->
       <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-        <table class="table table-bordered">
+        <table class="table table-bordered" id="productsTable">
           <thead class="table-info">
             <tr>
               <th>ID</th>
@@ -43,20 +43,22 @@
               <th>Purchased Date</th>
               <th>Quantity Received</th>
               <th>Quantity Supplied</th>
+              <th>Quantity Given in Loan</th>
               <th>Quantity in Stock</th>
             </tr>
           </thead>
-          <tbody id="productStatusTableBody">
+          <tbody>
             {% for item in product_status %}
-            <tr>
-              <td>{{ item.id }}</td>
-              <td>{{ item.category }}</td>
-              <td>{{ item.model }}</td>
-              <td>{{ item.purchased_date }}</td>
-              <td>{{ item.quantity_received }}</td>
-              <td>{{ item.quantity_supplied }}</td>
-              <td>{{ item.quantity_in_stock }}</td>
-            </tr>
+              <tr>
+                <td>{{ item.id }}</td>
+                <td>{{ item.category }}</td>
+                <td>{{ item.model }}</td>
+                <td>{{ item.purchased_date }}</td>
+                <td>{{ item.quantity_received }}</td>
+                <td>{{ item.quantity_supplied }}</td>
+                <td>{{ item.quantity_given_in_loan }}</td>
+                <td>{{ item.quantity_in_stock }}</td>
+              </tr>
             {% endfor %}
           </tbody>
         </table>
@@ -65,7 +67,7 @@
       <hr>
       {% comment %} second heading  {% endcomment %}
       <h5 class="mt-5 mb-3">Product Summary by Category</h5>
-      {% comment %} filter fo rsecond table  {% endcomment %}
+      <!-- Filter controls for summary table (if you already have these) -->
       <div class="row mb-3">
         <div class="col-md-4">
           <input type="text" id="summaryCategorySearch" class="form-control" placeholder="Search by Category...">
@@ -75,8 +77,7 @@
           <button class="btn btn-secondary" id="clearSummaryFilterBtn">Clear</button>
         </div>
       </div>
-      
-      {% comment %} second table  {% endcomment %}
+
       <div class="table-responsive">
         <table class="table table-bordered" id="productSummaryByCategory">
           <thead class="table-danger">
@@ -84,14 +85,17 @@
               <th>Category</th>
               <th>Quantity Received</th>
               <th>Quantity Supplied</th>
-              <th>Quantity In Stock</th>
+              <th>Quantity Supplied in Loan</th>
+              <th>Quantity in Stock</th>
             </tr>
           </thead>
           <tbody id="summaryCategoryBody">
-            <tr><td colspan="4" class="text-center">Loading...</td></tr>
+            {% comment %} Initially you can render a "Loading..." row; the AJAX will update this tbody. {% endcomment %}
+            <tr><td colspan="5" class="text-center">Loading...</td></tr>
           </tbody>
         </table>
       </div>
+
 
 
 
@@ -199,51 +203,60 @@
 
   {% comment %} second table  {% endcomment %}
   <script>
-    function fetchProductSummaryByCategoryFiltered(category = "", exportCSV = false) {
-      const url = new URL('/dashboard/product-status/summary-category/', window.location.origin);
-      if (category) url.searchParams.append('category', category);
-      if (exportCSV) url.searchParams.append('export', '1');
-    
-      fetch(url)
+    function fetchProductSummaryByCategoryFiltered(filterText = "", exportCSV = false) {
+      // Create URL with query parameters
+      let params = new URLSearchParams();
+      if (filterText) {
+        params.append('category', filterText);
+      }
+      if (exportCSV) {
+        params.append('export', '1');
+      }
+      fetch(`/dashboard/product-status/summary-category/?${params.toString()}`)
         .then(response => {
-          if (exportCSV) return response.blob(); // CSV blob
+          if (exportCSV) {
+            return response.blob();
+          }
           return response.json();
         })
         .then(data => {
           if (exportCSV) {
+            // Create a temporary link and trigger download of CSV
+            const url = window.URL.createObjectURL(data);
             const a = document.createElement('a');
-            a.href = window.URL.createObjectURL(data);
+            a.href = url;
             a.download = 'product_summary_by_category.csv';
+            document.body.appendChild(a);
             a.click();
+            a.remove();
             return;
           }
-    
           const tbody = document.getElementById('summaryCategoryBody');
           tbody.innerHTML = "";
-    
-          if (!data.data.length) {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center">No matching records</td></tr>`;
-            return;
+          if (data.data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center">No matching records</td></tr>`;
+          } else {
+            data.data.forEach(row => {
+              tbody.innerHTML += `
+                <tr>
+                  <td>${row.category}</td>
+                  <td>${row.quantity_received}</td>
+                  <td>${row.quantity_supplied}</td>
+                  <td>${row.quantity_loaned}</td>
+                  <td>${row.quantity_in_stock}</td>
+                </tr>`;
+            });
           }
-    
-          data.data.forEach(row => {
-            tbody.innerHTML += `
-              <tr>
-                <td>${row.category}</td>
-                <td>${row.quantity_received}</td>
-                <td>${row.quantity_supplied}</td>
-                <td>${row.quantity_in_stock}</td>
-              </tr>`;
-          });
         });
     }
     
+    // Set up event listeners for live filtering
     document.addEventListener('DOMContentLoaded', () => {
       const searchInput = document.getElementById('summaryCategorySearch');
       const exportBtn = document.getElementById('exportSummaryCsvBtn');
       const clearBtn = document.getElementById('clearSummaryFilterBtn');
     
-      // Live search
+      // Live filtering as user types
       searchInput.addEventListener('input', () => {
         fetchProductSummaryByCategoryFiltered(searchInput.value);
       });
@@ -253,7 +266,7 @@
         fetchProductSummaryByCategoryFiltered(searchInput.value, true);
       });
     
-      // Clear filter
+      // Clear filter button
       clearBtn.addEventListener('click', () => {
         searchInput.value = '';
         fetchProductSummaryByCategoryFiltered();
@@ -262,8 +275,8 @@
       // Initial load
       fetchProductSummaryByCategoryFiltered();
     });
+    </script>
     
-  </script>
   {% comment %} Chart.js for the first chart & second - stacked bar chart for received vs supplied  {% endcomment %}
   <script>
     document.addEventListener('DOMContentLoaded', function () {
