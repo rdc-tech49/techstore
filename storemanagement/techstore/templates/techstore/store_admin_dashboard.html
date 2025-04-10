@@ -87,14 +87,18 @@
 
         
       {% comment %} Third chart - stacked bar chart for received vs supplied  {% endcomment %}
+      <!-- Category-wise Supplied to Each User -->
       <div class="card mt-4">
-        <div class="card-header bg-info text-white">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
           <h5 class="mb-0">Category-wise Supplied to Each User</h5>
+          <button id="backToUserChart" class="btn btn-light btn-sm d-none">Back</button>
         </div>
         <div class="card-body">
-          <canvas id="userCategoryChart" height="120"></canvas>
+          <canvas id="userCategoryChart" height="80"></canvas>
+          <canvas id="modelByUserChart" class="mt-4 d-none" height="80"></canvas>
         </div>
       </div>
+
       
       
         
@@ -159,7 +163,7 @@
     fetchProductStatus();
   </script>
 
-  {% comment %} Chart.js for the first chart - stacked bar chart for received vs supplied  {% endcomment %}
+  {% comment %} Chart.js for the first chart & second - stacked bar chart for received vs supplied  {% endcomment %}
   <script>
     document.addEventListener('DOMContentLoaded', function () {
     const categoryCtx = document.getElementById('categoryChart').getContext('2d');
@@ -317,50 +321,137 @@
     });
   </script>
   
-  {% comment %} Chart.js for the third chart - stacked bar chart for received vs supplied  {% endcomment %}
+  {% comment %} Chart.js for the third & fourth chart - stacked bar chart for received vs supplied  {% endcomment %}  
   <script>
-    function fetchUserCategoryChart() {
-      fetch("{% url 'user_category_supply_chart_data' %}")
-        .then(response => response.json())
-        .then(data => {
-          const ctx = document.getElementById("userCategoryChart").getContext("2d");
+    document.addEventListener("DOMContentLoaded", function () {
+      const userCtx = document.getElementById('userCategoryChart').getContext('2d');
+      const modelCtx = document.getElementById('modelByUserChart').getContext('2d');
+      const backButton = document.getElementById('backToUserChart');
     
-          if (window.userCategoryChart && typeof window.userCategoryChart.destroy === "function") {
-            window.userCategoryChart.destroy();
-          }
+      let userCategoryChart;
+      let modelByUserChart;
     
-          window.userCategoryChart = new Chart(ctx, {
-            type: "bar",
-            data: {
-              labels: data.users,
-              datasets: data.datasets
-            },
-            options: {
-              responsive: true,
-              plugins: {
-                legend: { position: "top" },
-                tooltip: {
-                  mode: "index",
-                  intersect: false,
-                }
+      const backgroundColors = [
+        '#EF5350', '#42A5F5', '#66BB6A', '#FFA726',
+        '#AB47BC', '#FF7043', '#29B6F6', '#9CCC65',
+        '#FFCA28', '#7E57C2', '#26A69A', '#EC407A'
+      ];
+    
+      function fetchUserCategoryChart() {
+        fetch("{% url 'user_category_supply_chart' %}")
+          .then(res => res.json())
+          .then(data => {
+            const labels = data.users;
+            const datasets = data.categories.map((cat, idx) => ({
+              label: cat,
+              data: data.supplied[cat],
+              backgroundColor: backgroundColors[idx % backgroundColors.length],
+              borderColor: backgroundColors[idx % backgroundColors.length],
+              borderWidth: 1
+            }));
+    
+            const config = {
+              type: 'bar',
+              data: {
+                labels: labels,
+                datasets: datasets
               },
-              scales: {
-                x: {
-                  stacked: false
+              options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                  legend: { position: 'top' },
+                  tooltip: {
+                    callbacks: {
+                      label: function(context) {
+                        return `${context.dataset.label}: ${context.raw}`;
+                      }
+                    }
+                  }
                 },
-                y: {
-                  beginAtZero: true,
-                  stacked: false
+                scales: {
+                  x: { stacked: false },
+                  y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Quantity Supplied' }
+                  }
+                },
+                onClick: (e, elements) => {
+                  if (elements.length > 0) {
+                    const index = elements[0].index;
+                    const selectedUser = data.users[index];
+                    fetchModelSuppliedToUser(selectedUser);
+                  }
                 }
               }
+            };
+    
+            if (userCategoryChart && typeof userCategoryChart.destroy === 'function') {
+              userCategoryChart.destroy();
             }
+    
+            userCategoryChart = new Chart(userCtx, config);
           });
-        });
-    }
-    document.addEventListener("DOMContentLoaded", fetchUserCategoryChart);
-
+      }
+    
+      function fetchModelSuppliedToUser(userName) {
+        fetch(`/dashboard/model-supply-by-user/?username=${encodeURIComponent(userName)}`)
+          .then(res => res.json())
+          .then(data => {
+            const chartData = {
+              labels: data.models,
+              datasets: [{
+                label: `Model-wise Supplied to ${userName}`,
+                data: data.quantities,
+                backgroundColor: backgroundColors,
+                borderColor: backgroundColors,
+                borderWidth: 1
+              }]
+            };
+    
+            const config = {
+              type: 'bar',
+              data: chartData,
+              options: {
+                responsive: true,
+                plugins: {
+                  legend: { position: 'top' },
+                  tooltip: {
+                    callbacks: {
+                      label: function (context) {
+                        return `${context.label}: ${context.raw}`;
+                      }
+                    }
+                  }
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Quantity Supplied' }
+                  }
+                }
+              }
+            };
+    
+            if (modelByUserChart && typeof modelByUserChart.destroy === 'function') {
+              modelByUserChart.destroy();
+            }
+    
+            modelByUserChart = new Chart(modelCtx, config);
+            document.getElementById("modelByUserChart").classList.remove("d-none");
+            backButton.classList.remove("d-none");
+          });
+      }
+    
+      backButton.addEventListener("click", function () {
+        document.getElementById("modelByUserChart").classList.add("d-none");
+        backButton.classList.add("d-none");
+      });
+    
+      fetchUserCategoryChart();
+    });
   </script>
-  
+    
   
   
 

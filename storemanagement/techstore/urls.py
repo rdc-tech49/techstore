@@ -55,8 +55,10 @@ urlpatterns = [
     # second chart - stacked bar chart for model vise received vs supplied
     path('dashboard/model-chart-data/', views.model_chart_data, name='model_chart_data'),
     
-    # third chart - pie chart for product status
-    path('dashboard/user_category_supply_chart_data/', views.user_category_supply_chart_data, name='user_category_supply_chart_data'),
+    # third chart - 
+    path('dashboard/user-category-supply-chart/', views.user_category_supply_chart, name='user_category_supply_chart'),
+    # fourth chart 
+    path('dashboard/model-supply-by-user/', views.model_supply_by_user, name='model_supply_by_user'),
 
 
 

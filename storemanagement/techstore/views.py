@@ -785,40 +785,48 @@ def model_chart_data(request):
     return JsonResponse(data)
 
 # third chart - pie chart for product status
-# User-wise category supply
-def user_category_supply_chart_data(request):
-    # Get all distinct users and categories
+def user_category_supply_chart(request):
     users = SupplyOrder.objects.values_list('supplied_to__username', flat=True).distinct()
     categories = SupplyOrder.objects.values_list('category__name', flat=True).distinct()
+    
+    supplied = {category: [] for category in categories}
 
-    # Create a mapping of category -> supply counts per user
-    category_data = defaultdict(lambda: [0] * len(users))
-    user_index_map = {user: i for i, user in enumerate(users)}
-
-    for category in categories:
-        for user in users:
+    for user in users:
+        for category in categories:
             qty = SupplyOrder.objects.filter(
-                category__name=category,
-                supplied_to__username=user
+                supplied_to__username=user,
+                category__name=category
             ).aggregate(total=Sum('quantity_supplied'))['total'] or 0
-
-            index = user_index_map[user]
-            category_data[category][index] = qty
-
-    datasets = []
-    color_palette = [
-        '#4CAF50', '#2196F3', '#FFC107', '#FF5722', '#9C27B0',
-        '#3F51B5', '#009688', '#FF9800', '#E91E63', '#795548'
-    ]
-
-    for i, (category, data_list) in enumerate(category_data.items()):
-        datasets.append({
-            'label': category,
-            'data': data_list,
-            'backgroundColor': color_palette[i % len(color_palette)]
-        })
+            supplied[category].append(qty)
 
     return JsonResponse({
         'users': list(users),
-        'datasets': datasets
+        'categories': list(categories),
+        'supplied': supplied,
+    })
+
+# fourth chart
+def model_supply_by_user(request):
+    username = request.GET.get('username')
+    supplies = SupplyOrder.objects.filter(supplied_to__username=username)
+
+    models = []
+    quantities = []
+
+    for entry in supplies.values('model__model', 'category__name').distinct():
+        model_name = entry['model__model']
+        category_name = entry['category__name']
+        label = f"{model_name} ({category_name})"
+
+        total_qty = supplies.filter(
+            model__model=model_name,
+            category__name=category_name
+        ).aggregate(total=Sum('quantity_supplied'))['total'] or 0
+
+        models.append(label)
+        quantities.append(total_qty)
+
+    return JsonResponse({
+        'models': models,
+        'quantities': quantities,
     })
