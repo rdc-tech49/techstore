@@ -106,7 +106,7 @@ def store_admin_loanregister(request):
     # Calculate available quantity per product for loan
     supplied_totals = SupplyOrder.objects.values('model_id').annotate(total_supplied=Sum('quantity_supplied'))
     loaned_totals = LoanRegister.objects.values('model_id').annotate(total_loaned=Sum('quantity_supplied_in_loan'))
-
+    
     supplied_dict = {item['model_id']: item['total_supplied'] for item in supplied_totals}
     loaned_dict = {item['model_id']: item['total_loaned'] for item in loaned_totals}
 
@@ -114,7 +114,17 @@ def store_admin_loanregister(request):
     for product in products:
         total_supplied = supplied_dict.get(product.id, 0)
         total_loaned = loaned_dict.get(product.id, 0)
-        remaining = product.quantity - total_supplied - total_loaned
+        # Now calculate the total that has been returned via LoanRegister
+        total_returned = (
+            LoanRegister.objects
+            .filter(model_id=product.id, loaned_item_returned_date__isnull=False)
+            .aggregate(total=Sum('quantity_supplied_in_loan'))
+        )['total'] or 0
+
+        # Effective loaned quantity = total loaned - total returned
+        effective_loaned = total_loaned - total_returned
+
+        remaining = product.quantity - total_supplied - effective_loaned
         if remaining > 0:
             available_for_loan.append({
                 'category': product.category.name,
@@ -131,12 +141,25 @@ def store_admin_loanregister(request):
     }
     return render(request, 'techstore/store_admin_loanregister.html', context)
 
+
 @csrf_exempt
 def loan_product_to_user(request):
     if request.method == 'POST':
+        loan_id = request.POST.get("loan_id")
+        returned_date = request.POST.get("loaned_item_returned_date")
+
+        if loan_id:
+            # Update existing loan record
+            loan = get_object_or_404(LoanRegister, id=loan_id)
+            loan.loaned_item_returned_date = returned_date
+            loan.save()
+            messages.success(request, "Loan return updated successfully.")
+            return redirect('/store-admin/loan-register/')
+        
         category_id = request.POST['category']
         model_id = request.POST['model']
         quantity = int(request.POST['quantity'])
+        description= request.POST['description']
         date_supplied = request.POST['date_supplied']
         supplied_to_id = request.POST['supplied_to']
         received_person_name = request.POST['received_person_name']
@@ -145,6 +168,7 @@ def loan_product_to_user(request):
             category_id=category_id,
             model_id=model_id,
             quantity_supplied_in_loan=quantity,
+            description=description,
             date_supplied=date_supplied,
             supplied_to_id=supplied_to_id,
             received_person_name=received_person_name
@@ -157,18 +181,27 @@ def get_models_by_category(request, category_id):
     return JsonResponse({'models': data}) 
 
 def get_available_loan_quantity(request, model_id):
-    try:
-        product = Product.objects.get(id=model_id)
-        total_quantity = product.quantity
+    current_loan_id = request.GET.get('loan_id')
+    product = get_object_or_404(Product, id=model_id)
 
-        quantity_supplied = SupplyOrder.objects.filter(model_id=model_id).aggregate(total=Sum('quantity_supplied'))['total'] or 0
-        quantity_loaned = LoanRegister.objects.filter(model_id=model_id).aggregate(total=Sum('quantity_supplied_in_loan'))['total'] or 0
+    supplied_qty = SupplyOrder.objects.filter(model_id=model_id).aggregate(
+        total=Sum('quantity_supplied'))['total'] or 0
 
-        available_quantity = total_quantity - quantity_supplied - quantity_loaned
-        return JsonResponse({'available_quantity': max(available_quantity, 0)})
-    except Product.DoesNotExist:
-        return JsonResponse({'available_quantity': 0})
- 
+    loaned_qs = LoanRegister.objects.filter(
+        model_id=model_id,
+        loaned_item_returned_date__isnull=True
+    )
+
+    if current_loan_id:
+        loaned_qs = loaned_qs.exclude(id=current_loan_id)
+
+    loaned_qty = loaned_qs.aggregate(total=Sum('quantity_supplied_in_loan'))['total'] or 0
+
+    available_qty = product.quantity - supplied_qty - loaned_qty
+    available_qty = max(available_qty, 0)
+
+    return JsonResponse({'available_quantity': available_qty})
+
 def filter_loan_records(request):
     search = request.GET.get('search', '').strip()
     start_date = request.GET.get('start')
@@ -486,7 +519,8 @@ def orders_view(request):
     supplied_dict = {item['model_id']: item['total_supplied'] for item in supplied_totals}
 
     # Total loaned per product
-    loaned_totals = LoanRegister.objects.values('model_id').annotate(total_loaned=Sum('quantity_supplied_in_loan'))
+    loaned_totals = LoanRegister.objects.filter(loaned_item_returned_date__isnull=True).values('model_id').annotate(total_loaned=Sum('quantity_supplied_in_loan'))
+
     loaned_dict = {item['model_id']: item['total_loaned'] for item in loaned_totals}
 
     # Available quantity = total received - (supplied + loaned)
@@ -776,9 +810,29 @@ def get_available_quantity(request):
     product_id = request.GET.get('product_id')
     try:
         product = Product.objects.get(id=product_id)
-        total_supplied = SupplyOrder.objects.filter(model_id=product_id).aggregate(total=Sum('quantity_supplied'))['total'] or 0
-        available_quantity = product.quantity - total_supplied
-        return JsonResponse({'available_quantity': available_quantity})
+        total_quantity = product.quantity
+
+        # Total supplied to users
+        total_supplied = SupplyOrder.objects.filter(model_id=product_id)\
+                            .aggregate(total=Sum('quantity_supplied'))['total'] or 0
+
+        # Total loaned out
+        total_loaned = LoanRegister.objects.filter(model_id=product_id)\
+                           .aggregate(total=Sum('quantity_supplied_in_loan'))['total'] or 0
+
+        # Total loaned items returned
+        total_returned = LoanRegister.objects.filter(
+            model_id=product_id, loaned_item_returned_date__isnull=False
+        ).aggregate(total=Sum('quantity_supplied_in_loan'))['total'] or 0
+
+        # Effective loaned = loaned - returned
+        effective_loaned = total_loaned - total_returned
+
+        # Final available quantity
+        available_quantity = total_quantity - total_supplied - effective_loaned
+
+        return JsonResponse({'available_quantity': max(available_quantity, 0)})
+
     except Product.DoesNotExist:
         return JsonResponse({'error': 'Product not found'}, status=404)
 

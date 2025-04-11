@@ -20,6 +20,11 @@
   <div class="tab-content mt-3">
     <!-- Tab 1: Display Loan Records -->
     <div class="tab-pane fade show active" id="tab1" role="tabpanel">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
       <h3 class="mb-4">Products given in loan</h3>
       <div class="mb-3 row">
         <div class="col-md-4">
@@ -49,6 +54,7 @@
                     <th>Loan Date</th>
                     <th>Supplied To</th>
                     <th>Received Person Name</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody id="loan-records-body">
@@ -62,6 +68,23 @@
                             <td>{{ record.date_supplied|date:"Y-m-d" }}</td>
                             <td>{{ record.supplied_to.username }}</td>
                             <td>{{ record.received_person_name }}</td>
+                            <td>
+                              {% if not record.loaned_item_returned_date %}
+                                <button class="btn btn-sm btn-success receive-btn"
+                                        data-id="{{ record.id }}"
+                                        data-category="{{ record.category.id }}"
+                                        data-model="{{ record.model.id }}"
+                                        data-quantity="{{ record.quantity_supplied_in_loan }}"
+                                        data-description="{{ record.description }}"
+                                        data-date-supplied="{{ record.date_supplied }}"
+                                        data-supplied-to="{{ record.supplied_to.id }}"
+                                        data-received-person="{{ record.received_person_name }}">
+                                  Item Received
+                                </button>
+                              {% else %}
+                                <span class="badge bg-secondary">Returned</span>
+                              {% endif %}
+                            </td>
                         </tr>
                     {% endfor %}
                 {% else %}
@@ -135,6 +158,10 @@
             </select>
           </div>
           <div class="col-md-4 mt-3">
+            <label>Description</label>
+            <input type="text" name="description" class="form-control" required>
+          </div>
+          <div class="col-md-4 mt-3">
             <label>Date Supplied</label>
             <input type="date" name="date_supplied" class="form-control" required>
           </div>
@@ -149,6 +176,11 @@
           <div class="col-md-4 mt-3">
             <label>Received Person Name</label>
             <input type="text" name="received_person_name" class="form-control" required>
+          </div>
+          <input type="hidden" name="loan_id" id="loanId">
+          <div class="col-md-4 mt-3" id="returnDateField" style="display: none;">
+            <label>Loaned Item Returned Date</label>
+            <input type="date" name="loaned_item_returned_date" class="form-control" id="loanedItemReturnedDate">
           </div>
         </div>
         <button type="submit" class="btn btn-primary mt-3">Submit</button>
@@ -179,8 +211,14 @@
     
     document.getElementById('loanModel').addEventListener('change', function () {
       const modelId = this.value;
+      const loanId = document.getElementById('loanId').value;  // get the current loanId
+    
       if (modelId) {
-        fetch(`/get-available-loan-quantity/${modelId}/`)
+        const url = loanId
+          ? `/get-available-loan-quantity/${modelId}/?loan_id=${loanId}`
+          : `/get-available-loan-quantity/${modelId}/`;
+    
+        fetch(url)
           .then(res => res.json())
           .then(data => {
             const quantityDropdown = document.getElementById('loanQuantity');
@@ -195,7 +233,7 @@
           });
       }
     });
-    
+       
   </script>
 
   <script>
@@ -231,6 +269,49 @@
     });
     </script>
     
-  
+    <script>
+      document.querySelectorAll('.receive-btn').forEach(button => {
+        button.addEventListener('click', () => {
+          const tabTrigger = new bootstrap.Tab(document.querySelector('#loan-tab2-tab'));
+          tabTrigger.show(); // Switch to form tab
+    
+          document.getElementById('loanId').value = button.dataset.id;
+          const categorySelect = document.getElementById('loanCategory');
+          categorySelect.value = button.dataset.category;
+          categorySelect.dispatchEvent(new Event('change'));
+    
+          const modelId = button.dataset.model;
+          const quantityToSet = button.dataset.quantity;
+    
+          // Wait for model dropdown to be populated
+          const waitForModel = setInterval(() => {
+            const modelSelect = document.getElementById('loanModel');
+            if ([...modelSelect.options].some(opt => opt.value === modelId)) {
+              modelSelect.value = modelId;
+              modelSelect.dispatchEvent(new Event('change'));
+              clearInterval(waitForModel);
+    
+              // Wait for quantity dropdown to be populated
+              const waitForQuantity = setInterval(() => {
+                const quantitySelect = document.getElementById('loanQuantity');
+                if ([...quantitySelect.options].some(opt => opt.value === quantityToSet)) {
+                  quantitySelect.value = quantityToSet;
+                  clearInterval(waitForQuantity);
+                }
+              }, 100); // check every 100ms
+            }
+          }, 100); // check every 100ms
+    
+          document.querySelector('input[name="description"]').value = button.dataset.description;
+          document.querySelector('input[name="date_supplied"]').value = button.dataset.dateSupplied;
+          document.querySelector('select[name="supplied_to"]').value = button.dataset.suppliedTo;
+          document.querySelector('input[name="received_person_name"]').value = button.dataset.receivedPerson;
+    
+          // Show return date field
+          document.getElementById('returnDateField').style.display = 'block';
+        });
+      });
+    </script>
+    
 </div>
 {% endblock %}

@@ -37,9 +37,13 @@ class LoanRegister(models.Model):
     category = models.ForeignKey(ProductCategory, on_delete=models.CASCADE)
     model = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity_supplied_in_loan = models.PositiveIntegerField()
+    description = models.TextField(blank=True, null=True)
+    
     date_supplied = models.DateField()
     supplied_to = models.ForeignKey(User, on_delete=models.CASCADE)
     received_person_name = models.CharField(max_length=100)
+    loaned_item_returned_date = models.DateField(blank=True, null=True)
+
 
     def __str__(self):
         return f"Loan to {self.supplied_to.username} - {self.model.model}"
