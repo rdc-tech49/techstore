@@ -47,7 +47,7 @@
               <th>Quantity in Stock</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="productStatusTableBody" >
             {% for item in product_status %}
               <tr>
                 <td>{{ item.id }}</td>
@@ -170,6 +170,7 @@
                   <td>${item.purchased_date}</td>
                   <td>${item.quantity_received}</td>
                   <td>${item.quantity_supplied}</td>
+                  <td>${item.quantity_given_in_loan}</td>
                   <td>${item.quantity_in_stock}</td>
                 </tr>`;
             });

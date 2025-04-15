@@ -258,7 +258,7 @@ def filter_loan_records(request):
 
 
 @login_required
-def dashboard_view(request):
+def dashboard_view(request): 
     # Get all products (ordered by ID descending for example)
     products = Product.objects.all().order_by('-id')
 
@@ -268,8 +268,8 @@ def dashboard_view(request):
     )
     supplied_dict = {item['model__model']: item['total_supplied'] for item in supply_data}
 
-    # Aggregate LoanRegister data grouped by product model (quantity given in loan)
-    loan_data = LoanRegister.objects.values('model__model').annotate(
+    # Aggregate LoanRegister data grouped by product model (only where item is NOT returned)
+    loan_data = LoanRegister.objects.filter(loaned_item_returned_date__isnull=True).values('model__model').annotate(
         total_loaned=Sum('quantity_supplied_in_loan')
     )
     loaned_dict = {item['model__model']: item['total_loaned'] for item in loan_data}
@@ -277,16 +277,17 @@ def dashboard_view(request):
     # Prepare product status list with the new column
     product_status = []
     for product in products:
-        # Note: product.model is assumed to be a string (model name)
-        supplied_qty = supplied_dict.get(product.model, 0)
-        loaned_qty = loaned_dict.get(product.model, 0)
+        model_name = product.model  # Assuming model is stored as string
+
+        supplied_qty = supplied_dict.get(model_name, 0) or 0
+        loaned_qty = loaned_dict.get(model_name, 0) or 0
         quantity_received = product.quantity
         quantity_in_stock = quantity_received - (supplied_qty + loaned_qty)
 
         product_status.append({
             'id': product.id,
             'category': product.category.name,
-            'model': product.model,
+            'model': model_name,
             'purchased_date': product.purchased_date.strftime('%Y-%m-%d'),
             'quantity_received': quantity_received,
             'quantity_supplied': supplied_qty,
@@ -299,6 +300,7 @@ def dashboard_view(request):
     }
 
     return render(request, 'techstore/store_admin_dashboard.html', context)
+
 
 @login_required
 def customers_view(request):
@@ -879,7 +881,9 @@ def get_filtered_product_status(request):
     products = Product.objects.all()
 
     if search:
-        products = products.filter(model__icontains=search) | products.filter(category__name__icontains=search)
+        products = products.filter(
+            Q(model__icontains=search) | Q(category__name__icontains=search)
+        )
     if start_date:
         products = products.filter(purchased_date__gte=start_date)
     if end_date:
@@ -888,6 +892,9 @@ def get_filtered_product_status(request):
     data = []
     for p in products:
         supplied_quantity = SupplyOrder.objects.filter(model=p).aggregate(total=Sum('quantity_supplied'))['total'] or 0
+        loaned_quantity = LoanRegister.objects.filter(model=p, loaned_item_returned_date__isnull=True).aggregate(total=Sum('quantity_supplied_in_loan'))['total'] or 0
+        quantity_in_stock = p.quantity - (supplied_quantity + loaned_quantity)
+
         data.append({
             'id': p.id,
             'category': p.category.name,
@@ -895,10 +902,12 @@ def get_filtered_product_status(request):
             'purchased_date': p.purchased_date.strftime('%Y-%m-%d'),
             'quantity_received': p.quantity,
             'quantity_supplied': supplied_quantity,
-            'quantity_in_stock': p.quantity - supplied_quantity
+            'quantity_given_in_loan': loaned_quantity,
+            'quantity_in_stock': quantity_in_stock
         })
 
     return JsonResponse(data, safe=False)
+
 
 # dashboard table export 
 def export_product_status_csv(request):
@@ -935,8 +944,8 @@ def export_product_status_csv(request):
 
     return response
 
+
 def product_status_summary_by_category(request):
-    # Get all distinct categories from products that have a supply record
     category_filter = request.GET.get('category', '').strip().lower()
     export_csv = request.GET.get('export') == '1'
 
@@ -947,18 +956,25 @@ def product_status_summary_by_category(request):
         if category_filter and category_filter not in category_name.lower():
             continue
 
+        # Quantity received
         received_qty = Product.objects.filter(category__name=category_name).aggregate(
             total=Sum('quantity')
         )['total'] or 0
 
+        # Quantity supplied
         supplied_qty = SupplyOrder.objects.filter(category__name=category_name).aggregate(
             total=Sum('quantity_supplied')
         )['total'] or 0
 
-        loaned_qty = LoanRegister.objects.filter(category__name=category_name).aggregate(
+        # Quantity loaned (only where loaned_item_returned_date is NULL)
+        loaned_qty = LoanRegister.objects.filter(
+            category__name=category_name,
+            loaned_item_returned_date__isnull=True
+        ).aggregate(
             total=Sum('quantity_supplied_in_loan')
         )['total'] or 0
 
+        # Quantity in stock
         in_stock = received_qty - (supplied_qty + loaned_qty)
 
         data.append({
@@ -969,6 +985,7 @@ def product_status_summary_by_category(request):
             'quantity_in_stock': in_stock,
         })
 
+    # CSV export
     if export_csv:
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="product_summary_by_category.csv"'
@@ -984,7 +1001,10 @@ def product_status_summary_by_category(request):
             ])
         return response
 
+    # JSON response for AJAX
     return JsonResponse({'data': data})
+
+
 
 # First chart - stacked bar chart for received vs supplied
 def category_chart_data(request):
