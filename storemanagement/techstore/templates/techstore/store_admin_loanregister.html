@@ -188,6 +188,7 @@
     </div>
   </div>
 
+  {% comment %} script for form submission and dropdown population {% endcomment %}
   <script>
     document.getElementById('loanCategory').addEventListener('change', function () {
       const categoryId = this.value;
@@ -236,12 +237,14 @@
        
   </script>
 
+  {% comment %} script for loan records filtering and exporting  {% endcomment %}
   <script>
     function loadLoanRecords() {
       const search = document.getElementById('loan-search').value;
       const start = document.getElementById('loan-start-date').value;
       const end = document.getElementById('loan-end-date').value;
-    
+      document.getElementById('loan-records-body').innerHTML = `
+        <tr><td colspan="8" class="text-center">Loading...</td></tr>`
       fetch(`/filter-loan-records/?search=${search}&start=${start}&end=${end}`, {
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
       })
@@ -269,6 +272,7 @@
     });
     </script>
     
+    {% comment %} script for loan item received button  {% endcomment %}
     <script>
       document.querySelectorAll('.receive-btn').forEach(button => {
         button.addEventListener('click', () => {

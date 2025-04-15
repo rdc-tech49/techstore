@@ -202,6 +202,8 @@ def get_available_loan_quantity(request, model_id):
 
     return JsonResponse({'available_quantity': available_qty})
 
+
+# loan record first table filter and export
 def filter_loan_records(request):
     search = request.GET.get('search', '').strip()
     start_date = request.GET.get('start')
@@ -237,24 +239,40 @@ def filter_loan_records(request):
                 r.received_person_name
             ])
         return response
-
+    
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         rows = ""
         for i, r in enumerate(records, 1):
+            if not r.loaned_item_returned_date:
+                action_btn = f"""
+                <button class="btn btn-sm btn-success receive-btn"
+                        data-id="{r.id}"
+                        data-category="{r.category.id}"
+                        data-model="{r.model.id}"
+                        data-quantity="{r.quantity_supplied_in_loan}"
+                        data-description="{r.description}"
+                        data-date-supplied="{r.date_supplied}"
+                        data-supplied-to="{r.supplied_to.id}"
+                        data-received-person="{r.received_person_name}">
+                  Item Received
+                </button>
+            """
+            else:
+                action_btn = '<span class="badge bg-secondary">Returned</span>'
+
             rows += f"""
             <tr>
-            <td>{i}</td>
-            <td>{r.category.name}</td>
-            <td>{r.model.model}</td>
-            <td>{r.quantity_supplied_in_loan}</td>
-            <td>{r.date_supplied.strftime('%Y-%m-%d')}</td>
-            <td>{r.supplied_to.username}</td>
-            <td>{r.received_person_name}</td>
-            </tr>
+                <td>{i}</td>
+                <td>{r.category.name}</td>
+                <td>{r.model.model}</td>
+                <td>{r.quantity_supplied_in_loan}</td>
+                <td>{r.date_supplied.strftime('%Y-%m-%d')}</td>
+                <td>{r.supplied_to.username}</td>
+                <td>{r.received_person_name}</td>
+                <td>{action_btn}</td>
+             </tr>
             """
         return HttpResponse(rows)
-
-    return JsonResponse({'error': 'Invalid request'})
 
 
 @login_required
