@@ -28,14 +28,16 @@
         <table class="table table-bordered" id="productsTable">
           <thead class="table-info">
             <tr>
-              <th>ID</th>
-              <th>Category</th>
-              <th>Model</th>
-              <th>Quantity</th>
-              <th>Purchased Date</th>
+              <th data-column="0">ID <span class="sort-icon"></span></th>
+              <th data-column="1">Category <span class="sort-icon"></span></th>
+              <th data-column="2">Model <span class="sort-icon"></span></th>
+              <th data-column="3">Quantity <span class="sort-icon"></span></th>
+              <th data-column="4">Purchased Date <span class="sort-icon"></span></th>
               <th>Action</th>
             </tr>
           </thead>
+          
+          
           <tbody>
             {% for product in products_with_status %}
               <tr>
@@ -225,6 +227,44 @@
     });
   });
 </script>
+{% comment %} script for sorting first table {% endcomment %}
+<script>
+  const getCellValue = (tr, idx) =>
+    tr.children[idx].innerText || tr.children[idx].textContent;
+
+  const comparer = (idx, asc) => (a, b) => {
+    const v1 = getCellValue(asc ? a : b, idx);
+    const v2 = getCellValue(asc ? b : a, idx);
+    return !isNaN(v1) && !isNaN(v2)
+      ? v1 - v2
+      : v1.toString().localeCompare(v2.toString());
+  };
+
+  document.querySelectorAll('#productsTable th[data-column]').forEach(th => {
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', function () {
+      const table = th.closest('table');
+      const tbody = table.querySelector('tbody');
+      const index = th.dataset.column;
+      const asc = !(this.asc = !this.asc);
+
+      // Remove icons from all other headers
+      document.querySelectorAll('.sort-icon').forEach(icon => {
+        icon.textContent = '';
+      });
+
+      // Add ↑ or ↓ icon to the clicked header
+      const icon = th.querySelector('.sort-icon');
+      icon.textContent = asc ? '↑' : '↓';
+
+      // Sort rows
+      Array.from(tbody.querySelectorAll('tr'))
+        .sort(comparer(index, asc))
+        .forEach(tr => tbody.appendChild(tr));
+    });
+  });
+</script>
+
 
 {% comment %} second table filter  {% endcomment %}
 <script>

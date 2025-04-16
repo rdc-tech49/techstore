@@ -37,16 +37,17 @@
         <table class="table table-bordered w-100" style="table-layout: fixed;" id="productsTable">
           <thead class="table-info sticky-top">
             <tr>
-              <th class="w-5">ID</th>
-              <th>Category</th>
-              <th>Model</th>
-              <th>Purchased Date</th>
-              <th>Quantity Received</th>
-              <th>Quantity Supplied</th>
-              <th>Quantity Given in Loan</th>
-              <th>Quantity in Stock</th>
+              <th class="w-5" data-column="0">ID <span class="sort-icon"></span></th>
+              <th data-column="1">Category <span class="sort-icon"></span></th>
+              <th data-column="2">Model <span class="sort-icon"></span></th>
+              <th data-column="3">Purchased Date <span class="sort-icon"></span></th>
+              <th data-column="4">Quantity Received <span class="sort-icon"></span></th>
+              <th data-column="5">Quantity Supplied <span class="sort-icon"></span></th>
+              <th data-column="6">Quantity Given in Loan <span class="sort-icon"></span></th>
+              <th data-column="7">Quantity in Stock <span class="sort-icon"></span></th>
             </tr>
           </thead>
+          
           <tbody id="productStatusTableBody" >
             {% for item in product_status %}
               <tr>
@@ -82,13 +83,14 @@
         <table class="table table-bordered w-100" style="table-layout: fixed;" id="productSummaryByCategory">
           <thead class="table-danger sticky-top">
             <tr>
-              <th>Category</th>
-              <th>Quantity Received</th>
-              <th>Quantity Supplied</th>
-              <th>Quantity Supplied in Loan</th>
-              <th>Quantity in Stock</th>
+              <th data-column="0">Category <span class="sort-icon"></span></th>
+              <th data-column="1">Quantity Received <span class="sort-icon"></span></th>
+              <th data-column="2">Quantity Supplied <span class="sort-icon"></span></th>
+              <th data-column="3">Quantity Supplied in Loan <span class="sort-icon"></span></th>
+              <th data-column="4">Quantity in Stock <span class="sort-icon"></span></th>
             </tr>
           </thead>
+          
           <tbody id="summaryCategoryBody">
             {% comment %} Initially you can render a "Loading..." row; the AJAX will update this tbody. {% endcomment %}
             <tr><td colspan="5" class="text-center">Loading...</td></tr>
@@ -200,6 +202,45 @@
 
     // Initial load
     fetchProductStatus();
+
+
+    {% comment %} for sort  {% endcomment %}
+    function sortTableByColumn(tbody, columnIndex, asc = true) {
+      const rows = Array.from(tbody.querySelectorAll("tr"));
+  
+      const isNumeric = !isNaN(rows[0]?.children[columnIndex]?.innerText.trim());
+  
+      rows.sort((a, b) => {
+        const aText = a.children[columnIndex].innerText.trim();
+        const bText = b.children[columnIndex].innerText.trim();
+  
+        if (isNumeric) {
+          return asc ? aText - bText : bText - aText;
+        } else {
+          return asc
+            ? aText.localeCompare(bText)
+            : bText.localeCompare(aText);
+        }
+      });
+  
+      rows.forEach(row => tbody.appendChild(row));
+    }
+  
+    document.querySelectorAll("#productsTable th[data-column]").forEach(th => {
+      th.style.cursor = "pointer";
+      th.addEventListener("click", function () {
+        const column = parseInt(th.getAttribute("data-column"));
+        const tbody = document.querySelector("#productStatusTableBody");
+        const ascending = !(this.asc = !this.asc);
+  
+        // Reset icons
+        document.querySelectorAll(".sort-icon").forEach(span => span.textContent = "");
+        const icon = th.querySelector(".sort-icon");
+        icon.textContent = ascending ? "↑" : "↓";
+  
+        sortTableByColumn(tbody, column, ascending);
+      });
+    });
   </script>
 
   {% comment %} second table  {% endcomment %}
@@ -276,7 +317,43 @@
       // Initial load
       fetchProductSummaryByCategoryFiltered();
     });
-    </script>
+
+    function sortSummaryTableByColumn(tbody, columnIndex, asc = true) {
+      const rows = Array.from(tbody.querySelectorAll("tr"));
+  
+      const isNumeric = !isNaN(rows[0]?.children[columnIndex]?.innerText.trim());
+  
+      rows.sort((a, b) => {
+        const aText = a.children[columnIndex].innerText.trim();
+        const bText = b.children[columnIndex].innerText.trim();
+  
+        if (isNumeric) {
+          return asc ? aText - bText : bText - aText;
+        } else {
+          return asc
+            ? aText.localeCompare(bText)
+            : bText.localeCompare(aText);
+        }
+      });
+  
+      rows.forEach(row => tbody.appendChild(row));
+    }
+  
+    document.querySelectorAll("#productSummaryByCategory th[data-column]").forEach(th => {
+      th.style.cursor = "pointer";
+      th.addEventListener("click", function () {
+        const column = parseInt(th.getAttribute("data-column"));
+        const tbody = document.querySelector("#summaryCategoryBody");
+        const ascending = !(this.asc = !this.asc);
+  
+        // Reset all sort icons
+        document.querySelectorAll("#productSummaryByCategory .sort-icon").forEach(span => span.textContent = "");
+        th.querySelector(".sort-icon").textContent = ascending ? "↑" : "↓";
+  
+        sortSummaryTableByColumn(tbody, column, ascending);
+      });
+    });
+  </script>
     
   {% comment %} Chart.js for the first chart & second - stacked bar chart for received vs supplied  {% endcomment %}
   <script>
