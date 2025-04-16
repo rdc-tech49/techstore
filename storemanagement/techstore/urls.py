@@ -25,6 +25,7 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
 
 
+    # loan views 
     path('store-admin/loan-register/', views.store_admin_loanregister, name='store_admin_loanregister'),
     path('loan-product-to-user/', views.loan_product_to_user, name='loan_product_to_user'),
     path('get-models-by-category/<int:category_id>/', views.get_models_by_category, name='get_models_by_category'),

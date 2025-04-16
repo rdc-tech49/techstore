@@ -224,6 +224,24 @@ def filter_loan_records(request):
     if end_date:
         records = records.filter(date_supplied__lte=end_date)
 
+        # Sorting logic
+    sort_field = request.GET.get('sort', 'date')  # default field
+    order = request.GET.get('order', 'desc')      # default order
+
+    sort_map = {
+        'category': 'category__name',
+        'model': 'model__model',
+        'quantity': 'quantity_supplied_in_loan',
+        'date': 'date_supplied',
+        'supplied_to': 'supplied_to__username',
+    }
+
+    sort_by = sort_map.get(sort_field, 'date_supplied')
+    if order == 'desc':
+        sort_by = '-' + sort_by
+
+    records = records.order_by(sort_by)
+
     if export == 'csv':
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="loan_products.csv"'
