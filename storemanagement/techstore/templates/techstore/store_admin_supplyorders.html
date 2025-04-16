@@ -41,20 +41,21 @@
       </form>
       <!-- Table -->
       <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-        <table class="table table-bordered mt-3 w-100 table-hover" style="table-layout: fixed;" id="stockSummaryTable">
+        <table class="table table-bordered mt-3 w-100 table-hover" id="stockSummaryTable">
           <thead class="table-info sticky-top">
             <tr>
               <th class="w-5">#</th>
-              <th>Category</th>
-              <th>Model</th>
-              <th>Quantity Supplied</th>
-              <th>Supplied Date</th>
-              <th>Supplied To</th>
+              <th class="sortable" data-sort="category">Category</th>
+              <th class="sortable" data-sort="model">Model</th>
+              <th class="sortable" data-sort="quantity_supplied">Quantity Supplied</th>
+              <th class="sortable" data-sort="supplied_date">Supplied Date</th>
+              <th class="sortable" data-sort="supplied_to">Supplied To</th>
               <th>Received Person</th>
               <th>IV Number</th>
               <th class="w-15">Action</th>
             </tr>
           </thead>
+          
           <tbody  id="stockSummaryTableBody">
             {% for order in supply_orders %}
             <tr>
@@ -111,7 +112,8 @@
             <button class="btn btn-secondary" id="clearProductFiltersBtn">Clear</button>
           </div>
         </div>
-        
+        <input type="hidden" id="productSortField" name="sort_field" value="purchased_date">
+        <input type="hidden" id="productSortDirection" name="sort_direction" value="desc">
       </form>
 
       <div id="productsToBeSuppliedTable">
@@ -120,12 +122,14 @@
             <thead class="table-warning sticky-top">
               <tr>
                 <th class="w-5">#</th>
-                <th>Category</th>
-                <th>Model</th>
-                <th>Purchased Date</th>
-                <th>Quantity to be Supplied</th>
+                <th><a href="#" class="product-sortable" data-sort-field="category_name">Category</a><span class="product-sort-icon" id="sortIcon-category_name"></span></th>
+                <th><a href="#" class="product-sortable" data-sort-field="model">Model</a><span class="product-sort-icon" id="sortIcon-model"></span></th>
+                <th><a href="#" class="product-sortable" data-sort-field="purchased_date">Purchased Date</a><span class="product-sort-icon" id="sortIcon-purchased_date"></span></th>
+                <th><a href="#" class="product-sortable" data-sort-field="remaining_quantity">Quantity to be Supplied</a><span class="product-sort-icon" id="sortIcon-remaining_quantity"></span></th>
               </tr>
             </thead>
+            
+            
             <tbody id="productsToBeSuppliedTableBody">
               {% for item in products_to_supply %}
               <tr>
@@ -309,6 +313,8 @@
   
     {% comment %} filter for first table  {% endcomment %}
     <script>
+      
+
       document.addEventListener("DOMContentLoaded", function () {
           const filterForm = document.getElementById("filterForm");
           const stockSummaryTableBody = document.getElementById("stockSummaryTableBody");
@@ -319,43 +325,65 @@
           const clearFilters = document.getElementById("clearFilters");
       
           function fetchFilteredData() {
-              let params = new URLSearchParams(new FormData(filterForm)).toString();
-              fetch(`/store-admin/orders/?${params}`, {
-                  headers: { "X-Requested-With": "XMLHttpRequest" }
-              })
-              .then(response => response.json())
-              .then(data => {
-                  stockSummaryTableBody.innerHTML = "";
-                  if (data.supply_orders.length === 0) {
-                      stockSummaryTableBody.innerHTML = "<tr><td colspan='9'>No supply orders found.</td></tr>";
-                      return;
-                  }
-                  data.supply_orders.forEach((order, index) => {
-                      stockSummaryTableBody.innerHTML += `
-                          <tr>
-                              <td>${index + 1}</td>
-                              <td>${order.category}</td>
-                              <td>${order.model}</td>
-                              <td>${order.quantity_supplied}</td>
-                              <td>${order.supplied_date}</td>
-                              <td>${order.supplied_to}</td>
-                              <td>${order.received_person}</td>
-                              <td>${order.iv_number}</td>
-                              <td>
-                                  <a href="${order.edit_url}" class="btn btn-sm btn-primary">Edit</a>
-                                  <form method="POST" action="${order.delete_url}" style="display:inline;">
-                                    {% csrf_token %}
-                                      <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">
-                                          Delete
-                                      </button>
-                                  </form>
-                              </td>
-                          </tr>
-                      `;
-                  });
-              });
+            const formData = new FormData(filterForm);
+            formData.append("sort_field", currentSortField);
+            formData.append("sort_direction", currentSortDirection);
+            let params = new URLSearchParams(formData).toString();
+        
+            fetch(`/store-admin/orders/?${params}`, {
+                headers: { "X-Requested-With": "XMLHttpRequest" }
+            })
+            .then(response => response.json())
+            .then(data => {
+                stockSummaryTableBody.innerHTML = "";
+                if (data.supply_orders.length === 0) {
+                    stockSummaryTableBody.innerHTML = "<tr><td colspan='9'>No supply orders found.</td></tr>";
+                    return;
+                }
+                data.supply_orders.forEach((order, index) => {
+                    stockSummaryTableBody.innerHTML += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${order.category}</td>
+                            <td>${order.model}</td>
+                            <td>${order.quantity_supplied}</td>
+                            <td>${order.supplied_date}</td>
+                            <td>${order.supplied_to}</td>
+                            <td>${order.received_person}</td>
+                            <td>${order.iv_number}</td>
+                            <td>
+                                <a href="${order.edit_url}" class="btn btn-sm btn-primary">Edit</a>
+                                <form method="POST" action="${order.delete_url}" style="display:inline;">
+                                  {% csrf_token %}
+                                  <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">
+                                      Delete
+                                  </button>
+                                </form>
+                            </td>
+                        </tr>
+                    `;
+                });
+            });
           }
-      
+        
+          let currentSortField = "supplied_date";
+      let currentSortDirection = "desc";
+
+      // Sorting logic
+      document.querySelectorAll(".sortable").forEach(header => {
+          header.style.cursor = "pointer";
+          header.addEventListener("click", function () {
+              const sortField = this.dataset.sort;
+              if (currentSortField === sortField) {
+                  currentSortDirection = currentSortDirection === "asc" ? "desc" : "asc";
+              } else {
+                  currentSortField = sortField;
+                  currentSortDirection = "asc";
+              }
+              fetchFilteredData();
+          });
+      });
+
           function exportCSVData() {
               let params = new URLSearchParams(new FormData(filterForm)).toString();
               window.location.href = `/store-admin/orders/?export=csv&${params}`;
@@ -380,18 +408,23 @@
 
     {% comment %} filter for second table  {% endcomment %}
     <script>
+      let currentProductSortField = 'purchased_date';
+      let currentProductSortDirection = 'desc';
+
       function fetchFilteredProducts() {
         const search = document.getElementById('productSearchInput').value;
         const startDate = document.getElementById('productStartDate').value;
         const endDate = document.getElementById('productEndDate').value;
-    
+
         const params = new URLSearchParams({
           product_search: search,
           product_start_date: startDate,
           product_end_date: endDate,
-          product_live: 'true'  // to trigger the AJAX response
+          product_sort_field: currentProductSortField,
+          product_sort_direction: currentProductSortDirection,
+          product_live: 'true'
         });
-    
+
         fetch(`?${params.toString()}`, {
           headers: {
             'X-Requested-With': 'XMLHttpRequest'
@@ -400,11 +433,38 @@
         .then(response => response.text())
         .then(html => {
           document.getElementById('productsToBeSuppliedTableBody').innerHTML = html;
+          updateSortIcons();  // optional to show ↑↓
         })
         .catch(error => {
           console.error('Error fetching filtered products:', error);
         });
       }
+
+      // Sort column click handler
+      document.querySelectorAll('.product-sortable').forEach(header => {
+        header.addEventListener('click', function (e) {
+          e.preventDefault();
+          const clickedField = this.dataset.sortField;
+
+          if (currentProductSortField === clickedField) {
+            currentProductSortDirection = currentProductSortDirection === 'asc' ? 'desc' : 'asc';
+          } else {
+            currentProductSortField = clickedField;
+            currentProductSortDirection = 'asc';
+          }
+
+          fetchFilteredProducts();
+        });
+      });
+
+      function updateSortIcons() {
+        document.querySelectorAll('.product-sort-icon').forEach(icon => icon.textContent = '');
+        const iconEl = document.getElementById(`sortIcon-${currentProductSortField}`);
+        if (iconEl) {
+          iconEl.textContent = currentProductSortDirection === 'asc' ? '↑' : '↓';
+        }
+      }
+
     
       // Auto filter on typing and date change
       document.getElementById('productSearchInput').addEventListener('input', fetchFilteredProducts);

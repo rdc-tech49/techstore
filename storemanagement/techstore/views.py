@@ -605,6 +605,35 @@ def orders_view(request):
                 'purchased_date': product.purchased_date.strftime('%Y-%m-%d'),
                 'remaining_quantity': remaining_quantity,
             })
+    
+    #  sort for second table 
+    product_sort_field = request.GET.get('product_sort_field', 'purchased_date')
+    product_sort_direction = request.GET.get('product_sort_direction', 'desc')
+    # Map frontend sort fields to real fields
+    product_sort_field_map = {
+        'category_name': 'category__name',
+        'model': 'model__model',
+        'purchased_date': 'purchased_date',
+        'remaining_quantity': 'remaining_quantity',
+    }
+    order_by_field = product_sort_field_map.get(product_sort_field, 'purchased_date')
+    if product_sort_direction == 'desc':
+        order_by_field = '-' + order_by_field
+    # Define a key mapper for sorting
+    def sort_key(item):
+        if product_sort_field == 'category_name':
+            return item['category_name']
+        elif product_sort_field == 'model':
+            return item['model']
+        elif product_sort_field == 'purchased_date':
+            return item['purchased_date']
+        elif product_sort_field == 'remaining_quantity':
+            return item['remaining_quantity']
+        return item['purchased_date']  # default
+    reverse_sort = (product_sort_direction == 'desc')
+    products_to_supply = sorted(products_to_supply, key=sort_key, reverse=reverse_sort)
+    # end of sort for second table
+
 
     # CSV Export
     if product_export == 'csv':
@@ -676,6 +705,22 @@ def orders_view(request):
         supply_orders = supply_orders.filter(supplied_date__lte=end_date)
     supply_orders = supply_orders.order_by('-supplied_date')
 
+    sort_field = request.GET.get('sort_field', 'supplied_date')
+    sort_direction = request.GET.get('sort_direction', 'desc')
+
+    if sort_field in ['category', 'model', 'quantity_supplied', 'supplied_date', 'supplied_to']:
+        if sort_field == 'category':
+            order_by_field = 'category__name'
+        elif sort_field == 'model':
+            order_by_field = 'model__model'
+        elif sort_field == 'supplied_to':
+            order_by_field = 'supplied_to__username'
+        else:
+            order_by_field = sort_field
+        if sort_direction == 'desc':
+            order_by_field = '-' + order_by_field
+        supply_orders = supply_orders.order_by(order_by_field)
+
      # Handle AJAX request for filtering
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         data = []
@@ -693,6 +738,8 @@ def orders_view(request):
             })
         return JsonResponse({'supply_orders': data})
     
+    
+
     # Handle CSV export via AJAX
     if request.GET.get('export') == 'csv':
         response = HttpResponse(content_type='text/csv')
