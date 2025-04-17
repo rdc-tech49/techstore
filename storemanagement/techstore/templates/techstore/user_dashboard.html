@@ -1,0 +1,25 @@
+{% extends 'techstore/storeuser-page.html' %}
+{% block usercontent %}
+<div class="container">
+  <h3>Dashboard</h3>
+  <ul class="nav nav-tabs">
+    <li class="nav-item">
+      <a class="nav-link active" data-bs-toggle="tab" href="#product_status">Products status</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#charts">Report</a>
+    </li>
+  </ul>
+  <div class="tab-content mt-3">
+    <div class="tab-pane fade show active" id="product_status" role="tabpanel">
+      <h4 class="mt-4">Product Details</h4>
+    </div>
+    
+    
+    <div class="tab-pane fade" id="charts" role="tabpanel">
+      <h4 class="mt-4">Report</h4>
+    </div>
+  </div>
+
+{% endblock %}

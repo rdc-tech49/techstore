@@ -72,6 +72,10 @@ urlpatterns = [
     # fourth chart 
     path('dashboard/model-supply-by-user/', views.model_supply_by_user, name='model_supply_by_user'),
 
-
+    #users 
+    path('store-user/dashboard/', views.user_dashboard_view, name='user_dashboard'),
+    path('store-user/products/', views.user_products_view, name='user_products'),
+    path('store-user/orders/', views.user_orders_view, name='user_orders'),
+    path('store-user/loan-records/', views.user_loan_records_view, name='user_loan_records'),
 
 ]

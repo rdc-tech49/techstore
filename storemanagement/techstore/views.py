@@ -1187,3 +1187,33 @@ def model_supply_by_user(request):
         'models': models,
         'quantities': quantities,
     })
+
+
+def user_dashboard_view(request):
+    user = request.user
+    if not user.is_authenticated:
+        return redirect('login')
+    return render(request, 'techstore/user_dashboard.html')
+
+def user_products_view(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    user_supply_orders = SupplyOrder.objects.select_related('model__category', 'supplied_to').filter(
+        supplied_to=request.user
+    ).order_by('-supplied_date')
+
+    return render(request, 'techstore/user_products.html', {
+        'user_supply_orders': user_supply_orders,
+    })
+
+
+def user_orders_view(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    return render(request, 'techstore/user_orders.html')
+
+def user_loan_records_view(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    return render(request, 'techstore/user_loan_records.html')
