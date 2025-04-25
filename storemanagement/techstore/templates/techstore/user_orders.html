@@ -18,10 +18,26 @@
           <div class="alert alert-{{ message.tags }}">{{ message }}</div>
         {% endfor %}
       {% endif %}
+      <div class="row mb-3 g-2">
+        <div class="col-md-4">
+          <input type="text"
+                 id="activeSearch"
+                 class="form-control"
+                 placeholder="Search Category, Model, Description or Person…">
+        </div>
+        <div class="col-md-2">
+          <button id="clearActiveFilter"
+                  class="btn btn-secondary w-100">Clear</button>
+        </div>
+        <div class="col-md-2">
+          <button id="exportActiveCsv"
+                  class="btn btn-success w-100">Export CSV</button>
+        </div>
+      </div>
       <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
         {% if user_orders %}
       
-        <table class="table table-bordered mt-3 w-100 table-hover">
+        <table class="table table-bordered mt-3 w-100 table-hover" 
           <thead class="table-info sticky-top">
             <tr>
               <th>#</th>
@@ -34,8 +50,8 @@
               <th>Action</th> <!-- 👈 New column -->
             </tr>
           </thead>
-          <tbody>
-            {% for order in user_orders %}
+          <tbody  id="activeOrdersBody">
+            {% comment %} {% for order in user_orders %}
               <tr data-id="{{ order.id }}">
                 <td>{{ forloop.counter }}</td>
                 <td>{{ order.category.name }}</td>
@@ -64,7 +80,7 @@
                   {% endif %}
                 </td>
               </tr>
-            {% endfor %}
+            {% endfor %} {% endcomment %}
           </tbody>
         </table>
       
@@ -292,17 +308,20 @@
   
     
   {% comment %} script to handle delete, return and edit actions {% endcomment %}
-  <script>
+  {% comment %} <script>
     document.addEventListener("DOMContentLoaded", () => {
       // DELETE
       document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           if (!confirm("Are you sure you want to delete this order?")) return;
+
           fetch("{% url 'delete_user_supply_order' %}", {
             method: 'POST',
             headers: { 'X-CSRFToken': '{{ csrf_token }}' },
             body: new URLSearchParams({ 'id': btn.dataset.id })
-          }).then(res => res.json()).then(data => {
+          })
+          .then(res => res.json())
+          .then(data => {
             if (data.success) {
               btn.closest('tr').remove();
             } else {
@@ -311,20 +330,28 @@
           });
         });
       });
-    
+
       // RETURN
       document.querySelectorAll('.return-btn').forEach(btn => {
         btn.addEventListener('click', () => {
+          if (!confirm("Mark this item as returned?")) return;
+
           fetch("{% url 'mark_item_returned' %}", {
             method: 'POST',
             headers: { 'X-CSRFToken': '{{ csrf_token }}' },
             body: new URLSearchParams({ 'id': btn.dataset.id })
-          }).then(res => res.json()).then(data => {
+          })
+          .then(res => res.json())
+          .then(data => {
             if (data.success) {
               const row = btn.closest('tr');
-              row.querySelector('.return-btn').remove();
-              row.querySelector('.delete-btn').remove();
-              row.querySelector('.edit-btn').remove();
+
+              // Remove action buttons
+              row.querySelector('.return-btn')?.remove();
+              row.querySelector('.delete-btn')?.remove();
+              row.querySelector('.edit-user-order')?.remove();
+
+              // Replace last cell with "Item Returned" text
               row.querySelector('td:last-child').innerHTML = '<span class="text-success">Item Returned</span>';
             } else {
               alert("Error: " + data.error);
@@ -359,11 +386,181 @@
         });
       });
     });
+  </script> {% endcomment %}
+
+  {% comment %} script to handle delete, return  actions  {% endcomment %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+  
+      // DELETE handler using event delegation
+      document.addEventListener('click', function (e) {
+        if (e.target.classList.contains('delete-btn')) {
+          if (!confirm("Are you sure you want to delete this order?")) return;
+  
+          fetch("{% url 'delete_user_supply_order' %}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            body: new URLSearchParams({ 'id': e.target.dataset.id })
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              e.target.closest('tr').remove();
+            } else {
+              alert("Error: " + data.error);
+            }
+          });
+        }
+      });
+  
+      // RETURN handler using event delegation
+      document.addEventListener('click', function (e) {
+        if (e.target.classList.contains('return-btn')) {
+          if (!confirm("Mark this item as returned?")) return;
+  
+          fetch("{% url 'mark_item_returned' %}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            body: new URLSearchParams({ 'id': e.target.dataset.id })
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              const row = e.target.closest('tr');
+              row.querySelector('.return-btn')?.remove();
+              row.querySelector('.delete-btn')?.remove();
+              row.querySelector('.edit-user-order')?.remove();
+              row.querySelector('td:last-child').innerHTML = '<span class="text-success">Item Returned</span>';
+            } else {
+              alert("Error: " + data.error);
+            }
+          });
+        }
+      });
+  
+    });
   </script>
-    
+  
 
+  {% comment %} script to handle edit action  {% endcomment %}
+  <script>
+    function bindUserOrderButtons() {
+      document.querySelectorAll('.edit-user-order').forEach(button => {
+        button.addEventListener('click', function () {
+          // Fill fields
+          document.getElementById('edit_order_id').value = this.dataset.id;
+          document.querySelector('[name="description"]').value = this.dataset.description;
+          document.querySelector('[name="received_person_name"]').value = this.dataset.received;
+          document.querySelector('[name="supplied_date"]').value = this.dataset.supplied_date;
+  
+          const categorySelect = document.getElementById('userCategorySelect');
+          categorySelect.value = this.dataset.category;
+          categorySelect.dispatchEvent(new Event('change'));
+  
+          setTimeout(() => {
+            document.getElementById('userModelSelect').value = this.dataset.model;
+            document.getElementById('userModelSelect').dispatchEvent(new Event('change'));
+  
+            setTimeout(() => {
+              const quantitySelect = document.getElementById('userQuantitySelect');
+              quantitySelect.innerHTML = '';
+              for (let i = 1; i <= parseInt(this.dataset.quantity); i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.text = i;
+                quantitySelect.appendChild(option);
+              }
+              quantitySelect.value = this.dataset.quantity;
+            }, 300);
+          }, 300);
+  
+          // Switch tab
+          document.querySelector('#create-tab').click();
+          document.querySelector('form').scrollIntoView({ behavior: 'smooth' });
+        });
+      });
+  
+      document.querySelectorAll('.delete-btn').forEach(button => {
+        button.addEventListener('click', function () {
+          const id = this.dataset.id;
+          if (confirm('Are you sure you want to delete this order?')) {
+            fetch(`/store-user/orders/delete/`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+              },
+              body: JSON.stringify({ id: id })
+            })
+            .then(() => location.reload());
+          }
+        });
+      });
+  
+      document.querySelectorAll('.return-btn').forEach(button => {
+        button.addEventListener('click', function () {
+          const id = this.dataset.id;
+          if (confirm('Mark this item as returned?')) {
+            fetch(`/store-user/orders/returned/`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+              },
+              body: JSON.stringify({ id: id })
+            })
+            .then(() => location.reload());
+          }
+        });
+      });
+    }
+  
+    // Call once on page load
+    document.addEventListener('DOMContentLoaded', bindUserOrderButtons);
+  </script>
+  
 
-  </div>
+  {% comment %} script to handle live search and export  {% endcomment %}
+  <script>
+    const filterUrl   = "{% url 'filter_active_user_orders' %}";
+    const exportUrl   = "{% url 'export_active_user_orders' %}";
+    const body        = document.getElementById('activeOrdersBody');
+    const searchInput = document.getElementById('activeSearch');
+  
+    function fetchActive() {
+      const q = encodeURIComponent(searchInput.value.trim());
+      fetch(`${filterUrl}?search=${q}`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      })
+      .then(r => r.text())
+      .then(html => { body.innerHTML = html;
+      
+      // 🧠 Rebind event listeners
+    bindUserOrderButtons();});
+    }
+  
+    // live filter
+    searchInput.addEventListener('input', fetchActive);
+  
+    // clear
+    document.getElementById('clearActiveFilter')
+      .addEventListener('click', () => {
+        searchInput.value = '';
+        fetchActive();
+      });
+  
+    // export
+    document.getElementById('exportActiveCsv')
+      .addEventListener('click', () => {
+        const q = encodeURIComponent(searchInput.value.trim());
+        window.location.href = `${exportUrl}?search=${q}`;
+      });
+  
+    // initial load
+    document.addEventListener('DOMContentLoaded', fetchActive);
+  </script>
+  
+</div>
 
 
 {% endblock %}

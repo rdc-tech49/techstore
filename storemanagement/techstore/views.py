@@ -1394,3 +1394,94 @@ def mark_item_returned(request):
         return JsonResponse({'success': True})
     except UserSupplyOrder.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Order not found'})
+
+
+# filter for first table in user supply order 
+@login_required
+def filter_active_user_orders(request):
+    search = request.GET.get('search', '').strip()
+    user = request.user
+
+    qs = UserSupplyOrder.objects.filter(
+        user=user,
+        item_returned_date__isnull=True
+    ).select_related('category', 'model')
+
+    if search:
+        qs = qs.filter(
+            Q(category__name__icontains=search) |
+            Q(model__model__icontains=search) |
+            Q(description__icontains=search) |
+            Q(received_person_name__icontains=search)
+        )
+
+    rows = []
+    for index, order in enumerate(qs, start=1):
+        action_buttons = f"""
+        <button class="btn btn-sm btn-info edit-user-order"
+            data-id="{order.id}"
+            data-category="{order.category.id}"
+            data-model="{order.model.id}"
+            data-quantity="{order.quantity_supplied}"
+            data-supplied_date="{order.supplied_date.strftime('%Y-%m-%d')}"
+            data-description="{order.description}"
+            data-received="{order.received_person_name}">
+            Edit
+        </button>
+        <button class="btn btn-sm btn-danger delete-btn" data-id="{order.id}">Delete</button>
+        <button class="btn btn-sm btn-warning return-btn" data-id="{order.id}">Item Returned</button>
+        """
+
+        rows.append(f"""
+            <tr>
+              <td>{index}</td>
+              <td>{order.category.name}</td>
+              <td>{order.model.model}</td>
+              <td>{order.quantity_supplied}</td>
+              <td>{order.supplied_date}</td>
+              <td>{order.description}</td>
+              <td>{order.received_person_name}</td>
+              <td>{action_buttons}</td>
+            </tr>
+        """)
+
+    return HttpResponse(''.join(rows))
+
+
+# export first table in user supply order 
+@login_required
+def export_active_user_orders(request):
+    """
+    Export the same filtered active orders to CSV.
+    """
+    search = request.GET.get('search', '').strip()
+    qs = UserSupplyOrder.objects.filter(
+        user=request.user,
+        item_returned_date__isnull=True
+    )
+    if search:
+        qs = qs.filter(
+            Q(category__name__icontains=search)
+            | Q(model__model__icontains=search)
+            | Q(description__icontains=search)
+            | Q(received_person_name__icontains=search)
+        )
+
+    # build CSV
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="active_user_supply_orders.csv"'
+    writer = csv.writer(response)
+    writer.writerow([
+        'Category','Model','Quantity Supplied',
+        'Supplied Date','Description','Received Person'
+    ])
+    for o in qs.select_related('category','model'):
+        writer.writerow([
+            o.category.name,
+            o.model.model,
+            o.quantity_supplied,
+            o.supplied_date,
+            o.description,
+            o.received_person_name
+        ])
+    return response

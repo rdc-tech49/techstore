@@ -87,5 +87,9 @@ urlpatterns = [
 
     path('store-user/orders/delete/', views.delete_user_supply_order, name='delete_user_supply_order'),
     path('store-user/orders/return/', views.mark_item_returned, name='mark_item_returned'), 
+     # AJAX filter for active user supply orders
+    path('store-user/orders/filter-active/',views.filter_active_user_orders,        name='filter_active_user_orders'),
 
+    # Export filtered active user supply orders
+    path('store-user/orders/export-active/',views.export_active_user_orders,name='export_active_user_orders'),
 ]
