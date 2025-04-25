@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404, render, redirect
- 
+from django.http import JsonResponse
+
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.utils.safestring import mark_safe
@@ -9,7 +10,7 @@ from django.urls import reverse_lazy, reverse
 from django.contrib.auth.decorators import login_required
 # Create your views here.
 from django.contrib.auth.models import User
-from .models import ProductCategory, Product, SupplyOrder, LoanRegister
+from .models import ProductCategory, Product, SupplyOrder, LoanRegister, UserSupplyOrder
 from django.http import HttpResponseRedirect, JsonResponse, HttpResponse
 from django.core.files.storage import FileSystemStorage
 import csv
@@ -1211,9 +1212,148 @@ def user_products_view(request):
 def user_orders_view(request):
     if not request.user.is_authenticated:
         return redirect('login')
-    return render(request, 'techstore/user_orders.html')
+    user = request.user
+
+    # Get unique categories and models previously supplied to this user
+    user_supplies = SupplyOrder.objects.filter(supplied_to=user)
+    categories = ProductCategory.objects.filter(id__in=user_supplies.values_list('category_id', flat=True).distinct())
+    models = Product.objects.filter(id__in=user_supplies.values_list('model_id', flat=True).distinct())
+
+    context = {
+        'categories': categories,
+        'models': models,
+    }
+    return render(request, 'techstore/user_orders.html', context)
 
 def user_loan_records_view(request):
     if not request.user.is_authenticated:
         return redirect('login')
     return render(request, 'techstore/user_loan_records.html')
+
+# view for creating user supply order 
+@login_required
+def create_user_supply_order(request):
+    if request.method == 'POST' and request.user.is_authenticated:
+        category_id = request.POST.get('category')
+        model_id = request.POST.get('model')
+        quantity_supplied = request.POST.get('quantity_supplied')
+        supplied_date = request.POST.get('supplied_date')
+        description = request.POST.get('description')
+        received_person_name = request.POST.get('received_person_name')
+
+        try:
+            category = ProductCategory.objects.get(id=category_id)
+            model = Product.objects.get(id=model_id)
+
+            UserSupplyOrder.objects.create(
+                category=category,
+                model=model,
+                quantity_supplied=quantity_supplied,
+                supplied_date=supplied_date,
+                description=description,
+                received_person_name=received_person_name,
+                user=request.user  # ✅ use `user`, not `supplied_to`
+            )
+
+            messages.success(request, "User supply order created successfully.")
+        except Exception as e:
+            print("Error creating UserSupplyOrder:", e)
+            messages.error(request, "Failed to create user supply order.")
+
+        return redirect('user_orders')
+
+# view for getting models by category for user supply order creation 
+def get_user_models(request):
+    category_id = request.GET.get('category_id')
+    user = request.user
+    models_qs = Product.objects.filter(
+        id__in=SupplyOrder.objects.filter(
+            supplied_to=user, category_id=category_id
+        ).values_list('model_id', flat=True).distinct()
+    )
+    models_list = [{'id': m.id, 'name': m.name} for m in models_qs]
+    return JsonResponse({'models': models_list})
+
+# view for getting available quantity for user supply order creation 
+def get_user_model_quantity(request):
+    model_id = request.GET.get('model_id')
+    user = request.user
+    model = Product.objects.get(id=model_id)
+
+    total_supplied = SupplyOrder.objects.filter(supplied_to=user, model=model).aggregate(total=Sum('quantity_supplied'))['total'] or 0
+    used = UserSupplyOrder.objects.filter(user=user, model=model).aggregate(total=Sum('quantity_supplied'))['total'] or 0
+
+    available = total_supplied - used
+    return JsonResponse({'max_quantity': available})
+
+
+
+# view for getting models by category for user supply order creation 
+def get_models_by_category(request):
+    category_id = request.GET.get('category_id')
+    if request.user.is_authenticated and category_id:
+        # Get models supplied to the current user under this category
+        models = Product.objects.filter(
+            id__in=SupplyOrder.objects.filter(
+                supplied_to=request.user,
+                category_id=category_id
+            ).values_list('model_id', flat=True)
+        ).distinct()
+        
+        model_list = [{'id': m.id, 'model': m.model} for m in models]
+        return JsonResponse({'models': model_list})
+    return JsonResponse({'models': []})
+
+# view for getting available quantity for user supply order creation 
+def get_available_quantity_for_model(request):
+    try:
+        model_id = int(request.GET.get('model_id', 0))
+        user = request.user
+
+        if not user.is_authenticated:
+            return JsonResponse({'available_quantity': 0})
+
+        total_supplied = SupplyOrder.objects.filter(
+            model_id=model_id,
+            supplied_to=user
+        ).aggregate(total=Sum('quantity_supplied'))['total'] or 0
+
+        already_used = UserSupplyOrder.objects.filter(
+            model_id=model_id,
+            user=user  # ✅ Fixed field name
+        ).aggregate(total=Sum('quantity_supplied'))['total'] or 0
+
+        available_quantity = max(total_supplied - already_used, 0)
+
+        return JsonResponse({'available_quantity': available_quantity})
+
+    except Exception as e:
+        print("Error in get_available_quantity_for_model:", e)
+        return JsonResponse({'available_quantity': 0})
+
+    model_id = request.GET.get('model_id')
+
+    if request.user.is_authenticated and model_id:
+        # Make sure model_id is int
+        try:
+            model_id = int(model_id)
+        except ValueError:
+            return JsonResponse({'available_quantity': 0})
+
+        # Total quantity supplied to this user for this model
+        total_supplied = SupplyOrder.objects.filter(
+            model_id=model_id,
+            supplied_to=request.user
+        ).aggregate(total=Sum('quantity_supplied'))['total'] or 0
+
+        # Total quantity already used by this user from UserSupplyOrder
+        already_used = UserSupplyOrder.objects.filter(
+            model_id=model_id,
+            supplied_to=request.user
+        ).aggregate(total=Sum('quantity_supplied'))['total'] or 0
+
+        remaining = max(total_supplied - already_used, 0)
+
+        return JsonResponse({'available_quantity': remaining})
+
+    return JsonResponse({'available_quantity': 0})

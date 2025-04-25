@@ -47,3 +47,13 @@ class LoanRegister(models.Model):
 
     def __str__(self):
         return f"Loan to {self.supplied_to.username} - {self.model.model}"
+
+
+class UserSupplyOrder(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    category = models.ForeignKey(ProductCategory, on_delete=models.CASCADE)
+    model = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity_supplied = models.PositiveIntegerField()
+    supplied_date = models.DateField()
+    description = models.TextField(blank=True, null=True)
+    received_person_name = models.CharField(max_length=100)

@@ -78,4 +78,12 @@ urlpatterns = [
     path('store-user/orders/', views.user_orders_view, name='user_orders'),
     path('store-user/loan-records/', views.user_loan_records_view, name='user_loan_records'),
 
+    # user supply order
+    path('store-user/orders/create/', views.create_user_supply_order, name='create_user_supply_order'),
+    path('get-user-models/', views.get_user_models, name='get_user_models'),
+    path('get-user-model-quantity/', views.get_user_model_quantity, name='get_user_model_quantity'),
+    path('store-user/get-models/', views.get_models_by_category, name='get_models_by_category'),
+    path('store-user/get-available-quantity/', views.get_available_quantity_for_model, name='get_available_quantity'),
+
+
 ]
