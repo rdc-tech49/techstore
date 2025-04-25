@@ -1,6 +1,6 @@
 from django.shortcuts import get_object_or_404, render, redirect
 from django.http import JsonResponse
-
+from django.utils import timezone
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.utils.safestring import mark_safe
@@ -1209,58 +1209,97 @@ def user_products_view(request):
     })
 
 
-def user_orders_view(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
-    user = request.user
-
-    # Get unique categories and models previously supplied to this user
-    user_supplies = SupplyOrder.objects.filter(supplied_to=user)
-    categories = ProductCategory.objects.filter(id__in=user_supplies.values_list('category_id', flat=True).distinct())
-    models = Product.objects.filter(id__in=user_supplies.values_list('model_id', flat=True).distinct())
-
-    context = {
-        'categories': categories,
-        'models': models,
-    }
-    return render(request, 'techstore/user_orders.html', context)
 
 def user_loan_records_view(request):
     if not request.user.is_authenticated:
         return redirect('login')
     return render(request, 'techstore/user_loan_records.html')
 
+def user_orders_view(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    user = request.user
+
+    user_supplies = SupplyOrder.objects.filter(supplied_to=user)
+    categories = ProductCategory.objects.filter(id__in=user_supplies.values_list('category_id', flat=True).distinct())
+    models = Product.objects.filter(id__in=user_supplies.values_list('model_id', flat=True).distinct())
+
+    # Split into active and returned orders
+    active_orders = UserSupplyOrder.objects.filter(
+        user=user,
+        item_returned_date__isnull=True
+    ).select_related('category', 'model')
+
+    returned_orders = UserSupplyOrder.objects.filter(
+        user=user,
+        item_returned_date__isnull=False
+    ).select_related('category', 'model')
+
+    context = {
+        'categories': categories,
+        'models': models,
+        'user_orders': active_orders,
+        'returned_orders': returned_orders,
+    }
+
+    return render(request, 'techstore/user_orders.html', context)
+
 # view for creating user supply order 
 @login_required
-def create_user_supply_order(request):
-    if request.method == 'POST' and request.user.is_authenticated:
+def create_user_supply_order(request): 
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    if request.method == 'POST':
         category_id = request.POST.get('category')
         model_id = request.POST.get('model')
         quantity_supplied = request.POST.get('quantity_supplied')
         supplied_date = request.POST.get('supplied_date')
         description = request.POST.get('description')
         received_person_name = request.POST.get('received_person_name')
+        edit_order_id = request.POST.get('edit_order_id')  # <-- 🔍 Check for edit mode
 
         try:
             category = ProductCategory.objects.get(id=category_id)
             model = Product.objects.get(id=model_id)
 
-            UserSupplyOrder.objects.create(
-                category=category,
-                model=model,
-                quantity_supplied=quantity_supplied,
-                supplied_date=supplied_date,
-                description=description,
-                received_person_name=received_person_name,
-                user=request.user  # ✅ use `user`, not `supplied_to`
-            )
+            if edit_order_id:
+                # ✏️ Edit existing UserSupplyOrder
+                order = UserSupplyOrder.objects.get(id=edit_order_id, user=request.user)
+                order.category = category
+                order.model = model
+                order.quantity_supplied = quantity_supplied
+                order.supplied_date = supplied_date
+                order.description = description
+                order.received_person_name = received_person_name
+                order.save()
+                messages.success(request, "User supply order updated successfully.")
+            else:
+                # 🆕 Create new UserSupplyOrder
+                UserSupplyOrder.objects.create(
+                    category=category,
+                    model=model,
+                    quantity_supplied=quantity_supplied,
+                    supplied_date=supplied_date,
+                    description=description,
+                    received_person_name=received_person_name,
+                    user=request.user
+                )
+                messages.success(request, "User supply order created successfully.")
 
-            messages.success(request, "User supply order created successfully.")
         except Exception as e:
-            print("Error creating UserSupplyOrder:", e)
-            messages.error(request, "Failed to create user supply order.")
+            print("Error creating/updating UserSupplyOrder:", e)
+            messages.error(request, "Failed to process user supply order.")
 
         return redirect('user_orders')
+
+    if request.method == 'GET':
+        user_orders = UserSupplyOrder.objects.filter(user=request.user).select_related('category', 'model')
+        return render(request, 'techstore/user_orders.html', {
+            'user_orders': user_orders,
+        })
+
 
 # view for getting models by category for user supply order creation 
 def get_user_models(request):
@@ -1318,9 +1357,11 @@ def get_available_quantity_for_model(request):
             supplied_to=user
         ).aggregate(total=Sum('quantity_supplied'))['total'] or 0
 
+        # Only subtract the ones that have NOT been returned
         already_used = UserSupplyOrder.objects.filter(
             model_id=model_id,
-            user=user  # ✅ Fixed field name
+            user=user,
+            item_returned_date__isnull=True  # ⬅️ key line
         ).aggregate(total=Sum('quantity_supplied'))['total'] or 0
 
         available_quantity = max(total_supplied - already_used, 0)
@@ -1331,29 +1372,26 @@ def get_available_quantity_for_model(request):
         print("Error in get_available_quantity_for_model:", e)
         return JsonResponse({'available_quantity': 0})
 
-    model_id = request.GET.get('model_id')
+@csrf_exempt
+@require_POST
+def delete_user_supply_order(request):
+    order_id = request.POST.get('id')
+    try:
+        order = UserSupplyOrder.objects.get(id=order_id, user=request.user)
+        order.delete()
+        return JsonResponse({'success': True})
+    except UserSupplyOrder.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Order not found'})
 
-    if request.user.is_authenticated and model_id:
-        # Make sure model_id is int
-        try:
-            model_id = int(model_id)
-        except ValueError:
-            return JsonResponse({'available_quantity': 0})
-
-        # Total quantity supplied to this user for this model
-        total_supplied = SupplyOrder.objects.filter(
-            model_id=model_id,
-            supplied_to=request.user
-        ).aggregate(total=Sum('quantity_supplied'))['total'] or 0
-
-        # Total quantity already used by this user from UserSupplyOrder
-        already_used = UserSupplyOrder.objects.filter(
-            model_id=model_id,
-            supplied_to=request.user
-        ).aggregate(total=Sum('quantity_supplied'))['total'] or 0
-
-        remaining = max(total_supplied - already_used, 0)
-
-        return JsonResponse({'available_quantity': remaining})
-
-    return JsonResponse({'available_quantity': 0})
+@csrf_exempt
+@require_POST
+def mark_item_returned(request): 
+    order_id = request.POST.get('id')
+    try:
+        order = UserSupplyOrder.objects.get(id=order_id, user=request.user)
+        order.item_returned_date = timezone.now().date()  # Set current date
+        order.save()
+        return JsonResponse({'success': True})
+    except UserSupplyOrder.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Order not found'})
+    

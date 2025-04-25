@@ -57,3 +57,5 @@ class UserSupplyOrder(models.Model):
     supplied_date = models.DateField()
     description = models.TextField(blank=True, null=True)
     received_person_name = models.CharField(max_length=100)
+    returned = models.BooleanField(default=False)
+    item_returned_date = models.DateField(null=True, blank=True)

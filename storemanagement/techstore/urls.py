@@ -85,5 +85,7 @@ urlpatterns = [
     path('store-user/get-models/', views.get_models_by_category, name='get_models_by_category'),
     path('store-user/get-available-quantity/', views.get_available_quantity_for_model, name='get_available_quantity'),
 
+    path('store-user/orders/delete/', views.delete_user_supply_order, name='delete_user_supply_order'),
+    path('store-user/orders/return/', views.mark_item_returned, name='mark_item_returned'), 
 
 ]
