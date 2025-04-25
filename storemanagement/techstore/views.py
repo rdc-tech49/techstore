@@ -1394,4 +1394,3 @@ def mark_item_returned(request):
         return JsonResponse({'success': True})
     except UserSupplyOrder.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Order not found'})
-    

@@ -89,7 +89,8 @@
                     <th>Returned Date</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="active-orders-body">
+              
                 {% if returned_orders %}
                     {% for order in returned_orders %}
                         <tr>
@@ -108,6 +109,7 @@
                         <td colspan="8" class="text-center">No returned supply orders found.</td>
                     </tr>
                 {% endif %}
+              
             </tbody>
         </table>
       </div>
@@ -184,12 +186,31 @@
         setTimeout(() => {
           const modelSelect = document.getElementById('userModelSelect');
           modelSelect.value = this.dataset.model;
-          modelSelect.dispatchEvent(new Event('change'));
-  
+        
+          // Trigger model change to reload quantity (this can be skipped in edit mode)
+          // modelSelect.dispatchEvent(new Event('change'));
+        
           setTimeout(() => {
-            document.getElementById('userQuantitySelect').value = this.dataset.quantity;
+            const quantitySelect = document.getElementById('userQuantitySelect');
+            const originalQuantity = parseInt(this.dataset.quantity);
+        
+            // Clear existing options
+            quantitySelect.innerHTML = '<option value="">Select Quantity</option>';
+        
+            // Populate quantity options from 1 to original quantity
+            for (let i = 1; i <= originalQuantity; i++) {
+              const option = document.createElement('option');
+              option.value = i;
+              option.textContent = i;
+              quantitySelect.appendChild(option);
+            }
+        
+            // Select original quantity
+            quantitySelect.value = originalQuantity;
+        
           }, 300);
         }, 300);
+        
   
         // 🔄 Switch to "Create Supply Order" tab
         const createTabTrigger = new bootstrap.Tab(document.querySelector('#create-tab'));
@@ -338,9 +359,11 @@
         });
       });
     });
-    </script>
+  </script>
     
-</div>
+
+
+  </div>
 
 
 {% endblock %}
