@@ -1028,7 +1028,7 @@ def export_product_status_csv(request):
 
     return response
 
-
+ 
 def product_status_summary_by_category(request):
     category_filter = request.GET.get('category', '').strip().lower()
     export_csv = request.GET.get('export') == '1'
@@ -1189,13 +1189,14 @@ def model_supply_by_user(request):
         'quantities': quantities,
     })
 
-
+# view for user dashboard 
 def user_dashboard_view(request):
     user = request.user
     if not user.is_authenticated:
         return redirect('login')
     return render(request, 'techstore/user_dashboard.html')
 
+# view for user inventory
 def user_products_view(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -1215,6 +1216,7 @@ def user_loan_records_view(request):
         return redirect('login')
     return render(request, 'techstore/user_loan_records.html')
 
+# view for user orders 
 def user_orders_view(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -1372,6 +1374,7 @@ def get_available_quantity_for_model(request):
         print("Error in get_available_quantity_for_model:", e)
         return JsonResponse({'available_quantity': 0})
 
+# view for deleting user supply order 
 @csrf_exempt
 @require_POST
 def delete_user_supply_order(request):
@@ -1383,6 +1386,7 @@ def delete_user_supply_order(request):
     except UserSupplyOrder.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Order not found'})
 
+# view for marking item as returned 
 @csrf_exempt
 @require_POST
 def mark_item_returned(request): 
@@ -1396,7 +1400,7 @@ def mark_item_returned(request):
         return JsonResponse({'success': False, 'error': 'Order not found'})
 
 
-# filter for first table in user supply order 
+# filter for for active user orders  
 @login_required
 def filter_active_user_orders(request):
     search = request.GET.get('search', '').strip()
@@ -1448,7 +1452,7 @@ def filter_active_user_orders(request):
     return HttpResponse(''.join(rows))
 
 
-# export first table in user supply order 
+# export for active user orders 
 @login_required
 def export_active_user_orders(request):
     """
@@ -1483,5 +1487,79 @@ def export_active_user_orders(request):
             o.supplied_date,
             o.description,
             o.received_person_name
+        ])
+    return response
+
+# filter for returned user orders
+@login_required
+def filter_returned_user_orders(request):
+    search = request.GET.get('search', '').strip()
+    user = request.user
+
+    qs = UserSupplyOrder.objects.filter(
+        user=user,
+        item_returned_date__isnull=False
+    ).select_related('category', 'model')
+
+    if search:
+        qs = qs.filter(
+            Q(category__name__icontains=search) |
+            Q(model__model__icontains=search) |
+            Q(description__icontains=search) |
+            Q(received_person_name__icontains=search)
+        )
+
+    rows = []
+    for index, order in enumerate(qs, start=1):
+        rows.append(f"""
+        <tr>
+          <td>{index}</td>
+          <td>{order.category.name}</td>
+          <td>{order.model.model}</td>
+          <td>{order.quantity_supplied}</td>
+          <td>{order.supplied_date.strftime('%d-%m-%Y')}</td>
+          <td>{order.description}</td>
+          <td>{order.received_person_name}</td>
+          <td>{order.item_returned_date.strftime('%B %d, %Y')}</td>
+        </tr>
+        """)
+    return HttpResponse(''.join(rows))
+
+# export for returned user orders 
+@login_required
+def export_returned_user_orders(request):
+    """
+    Export the same filtered returned orders to CSV.
+    """
+    search = request.GET.get('search', '').strip()
+    qs = UserSupplyOrder.objects.filter(
+        user=request.user,
+        item_returned_date__isnull=False
+    )
+    if search:
+        qs = qs.filter(
+            Q(category__name__icontains=search) |
+            Q(model__model__icontains=search) |
+            Q(description__icontains=search) |
+            Q(received_person_name__icontains=search)
+        )
+
+    # build CSV
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="returned_user_supply_orders.csv"'
+    writer = csv.writer(response)
+    writer.writerow([
+        'Category','Model','Quantity Supplied',
+        'Supplied Date','Description','Received Person'
+    ])
+    for o in qs.select_related('category','model'):
+        writer.writerow([
+            o.category.name,
+            o.model.model,
+            o.quantity_supplied,
+            o.supplied_date.strftime('%d-%m-%Y'),
+            o.description,
+            o.received_person_name,
+            o.item_returned_date.strftime('%B %d, %Y'),
         ])
     return response

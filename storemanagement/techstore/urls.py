@@ -92,4 +92,9 @@ urlpatterns = [
 
     # Export filtered active user supply orders
     path('store-user/orders/export-active/',views.export_active_user_orders,name='export_active_user_orders'),
+
+    # AJAX filter for completed user supply orders
+    path('user/orders/filter-returned/', views.filter_returned_user_orders, name='filter_returned_user_orders'),
+    # Export filtered completed user supply orders
+    path('user/orders/export-returned/', views.export_returned_user_orders, name='export_returned_user_orders'),
 ]
