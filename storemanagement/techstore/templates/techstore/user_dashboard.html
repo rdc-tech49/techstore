@@ -14,12 +14,84 @@
   <div class="tab-content mt-3">
     <div class="tab-pane fade show active" id="product_status" role="tabpanel">
       <h4 class="mt-4">Product Details</h4>
+      <input type="text" id="dashboardSearch" class="form-control mb-2" placeholder="Search...">
+      <button id="clearDashboardFilter" class="btn btn-secondary btn-sm mb-2">Clear Filter</button>
+      <button id="exportDashboardCsv" class="btn btn-success btn-sm mb-2">Export to CSV</button>
+
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Category</th>
+            <th>Model</th>
+            <th>Date Received</th>
+            <th>Quantity Received</th>
+            <th>Quantity Supplied</th>
+            <th>Quantity To Be Supplied</th>
+          </tr>
+        </thead>
+        <tbody id="dashboardTableBody">
+          {% for item in dashboard_data %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ item.category }}</td>
+            <td>{{ item.model }}</td>
+            <td>{{ item.date_received|date:"d-m-Y" }}</td>
+            <td>{{ item.quantity_received }}</td>
+            <td>{{ item.quantity_supplied }}</td>
+            <td>{{ item.quantity_to_be_supplied }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="text-center">No data available</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      
     </div>
     
     
     <div class="tab-pane fade" id="charts" role="tabpanel">
       <h4 class="mt-4">Report</h4>
     </div>
+    
+    {% comment %} script for first table live search and export functionality  {% endcomment %}
+    <script>
+      const dashboardFilterUrl = "{% url 'filter_user_dashboard' %}";
+      const dashboardExportUrl = "{% url 'export_user_dashboard_csv' %}";
+      const dashboardBody = document.getElementById('dashboardTableBody');
+      const dashboardSearch = document.getElementById('dashboardSearch');
+      
+      function fetchDashboardData() {
+        const q = encodeURIComponent(dashboardSearch.value.trim());
+        fetch(`${dashboardFilterUrl}?search=${q}`, {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.text())
+        .then(html => { dashboardBody.innerHTML = html; });
+      }
+      
+      // live search
+      dashboardSearch.addEventListener('input', fetchDashboardData);
+      
+      // clear search
+      document.getElementById('clearDashboardFilter')
+        .addEventListener('click', () => {
+          dashboardSearch.value = '';
+          fetchDashboardData();
+        });
+      
+      // export to CSV
+      document.getElementById('exportDashboardCsv')
+        .addEventListener('click', () => {
+          const q = encodeURIComponent(dashboardSearch.value.trim());
+          window.location.href = `${dashboardExportUrl}?search=${q}`;
+        });
+      
+      // initial load
+      document.addEventListener('DOMContentLoaded', fetchDashboardData);
+    </script>
   </div>
 
 {% endblock %}

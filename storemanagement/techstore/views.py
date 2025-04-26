@@ -1190,11 +1190,11 @@ def model_supply_by_user(request):
     })
 
 # view for user dashboard 
-def user_dashboard_view(request):
-    user = request.user
-    if not user.is_authenticated:
-        return redirect('login')
-    return render(request, 'techstore/user_dashboard.html')
+# def user_dashboard_view(request):
+#     user = request.user
+#     if not user.is_authenticated:
+#         return redirect('login')
+#     return render(request, 'techstore/user_dashboard.html')
 
 # view for user inventory
 def user_products_view(request):
@@ -1562,4 +1562,96 @@ def export_returned_user_orders(request):
             o.received_person_name,
             o.item_returned_date.strftime('%B %d, %Y'),
         ])
+    return response
+
+# view for user dashboard 
+@login_required
+def user_dashboard_view(request):
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return filter_user_dashboard(request)
+
+    user = request.user
+    dashboard_data = get_user_dashboard_data(user)
+
+    return render(request, 'techstore/user_dashboard.html', {
+        'dashboard_data': dashboard_data
+    })
+
+# view for user dashboard table  
+def get_user_dashboard_data(user, search_query=None):
+    supply_orders = SupplyOrder.objects.filter(supplied_to=user).select_related('category', 'model')
+
+    if search_query:
+        supply_orders = supply_orders.filter(
+            Q(category__name__icontains=search_query) |
+            Q(model__model__icontains=search_query)
+        )
+
+    dashboard_data = []
+
+    for supply_order in supply_orders:
+        quantity_supplied = UserSupplyOrder.objects.filter(
+            user=user,
+            model=supply_order.model,
+            item_returned_date__isnull=True
+        ).aggregate(total_supplied=Sum('quantity_supplied'))['total_supplied'] or 0
+
+        quantity_to_be_supplied = supply_order.quantity_supplied - quantity_supplied
+
+        dashboard_data.append({
+            'category': supply_order.category.name,
+            'model': supply_order.model.model,
+            'date_received': supply_order.supplied_date,
+            'quantity_received': supply_order.quantity_supplied,
+            'quantity_supplied': quantity_supplied,
+            'quantity_to_be_supplied': quantity_to_be_supplied,
+        })
+
+    return dashboard_data
+
+# view for user dashboard first table filter 
+@login_required
+def filter_user_dashboard(request):
+    search = request.GET.get('search', '').strip()
+    dashboard_data = get_user_dashboard_data(request.user, search)
+
+    rows = ""
+    for index, item in enumerate(dashboard_data, start=1):
+        rows += f"""
+        <tr>
+          <td>{index}</td>
+          <td>{item['category']}</td>
+          <td>{item['model']}</td>
+          <td>{item['date_received'].strftime('%d-%m-%Y')}</td>
+          <td>{item['quantity_received']}</td>
+          <td>{item['quantity_supplied']}</td>
+          <td>{item['quantity_to_be_supplied']}</td>
+        </tr>
+        """
+    return HttpResponse(rows)
+
+# view for exporting user dashboard first table data to CSV 
+@login_required
+def export_user_dashboard_csv(request):
+    search = request.GET.get('search', '').strip()
+    dashboard_data = get_user_dashboard_data(request.user, search)
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="dashboard_data.csv"'
+    writer = csv.writer(response)
+    writer.writerow([
+        'Category', 'Model', 'Date Received', 'Quantity Received',
+        'Quantity Supplied', 'Quantity To Be Supplied'
+    ])
+
+    for item in dashboard_data:
+        writer.writerow([
+            item['category'],
+            item['model'],
+            item['date_received'].strftime('%d-%m-%Y'),
+            item['quantity_received'],
+            item['quantity_supplied'],
+            item['quantity_to_be_supplied'],
+        ])
+
     return response

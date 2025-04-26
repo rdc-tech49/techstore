@@ -73,7 +73,7 @@ urlpatterns = [
     path('dashboard/model-supply-by-user/', views.model_supply_by_user, name='model_supply_by_user'),
 
     #users 
-    path('store-user/dashboard/', views.user_dashboard_view, name='user_dashboard'),
+    
     path('store-user/products/', views.user_products_view, name='user_products'),
     path('store-user/orders/', views.user_orders_view, name='user_orders'),
     path('store-user/loan-records/', views.user_loan_records_view, name='user_loan_records'),
@@ -97,4 +97,12 @@ urlpatterns = [
     path('user/orders/filter-returned/', views.filter_returned_user_orders, name='filter_returned_user_orders'),
     # Export filtered completed user supply orders
     path('user/orders/export-returned/', views.export_returned_user_orders, name='export_returned_user_orders'),
+
+    # user dashboard views 
+    # first table in user dashboard 
+    path('store-user/dashboard/', views.user_dashboard_view, name='user_dashboard'),
+    path('store-user/dashboard/filter/', views.filter_user_dashboard, name='filter_user_dashboard'),
+    path('store-user/dashboard/export/', views.export_user_dashboard_csv, name='export_user_dashboard_csv'),
+
+    #second table in user dashboard
 ]
