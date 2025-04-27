@@ -1656,7 +1656,7 @@ def export_user_dashboard_csv(request):
 
     return response
 
-
+# view for user dashboard second table 
 @login_required
 def dashboard_summary_by_category(request):
     """

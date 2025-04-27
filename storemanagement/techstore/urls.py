@@ -103,7 +103,6 @@ urlpatterns = [
     path('store-user/dashboard/', views.user_dashboard_view, name='user_dashboard'),
     path('store-user/dashboard/filter/', views.filter_user_dashboard, name='filter_user_dashboard'),
     path('store-user/dashboard/export/', views.export_user_dashboard_csv, name='export_user_dashboard_csv'),
-
     #second table in user dashboard
     path('dashboard/summary-category/', views.dashboard_summary_by_category, name='dashboard_summary_by_category'),
 
