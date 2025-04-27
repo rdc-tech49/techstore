@@ -85,6 +85,20 @@
     
     <div class="tab-pane fade" id="charts" role="tabpanel">
       <h4 class="mt-4">Report</h4>
+      {% comment %} first chart  {% endcomment %}
+      <div class="card my-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Quantity Received vs Quantity Supplied (per Category)</h5>
+          <button id="downloadChartBtn" class="btn btn-primary mt-3">Download Chart</button>
+        </div>
+        <div class="card-body">
+          <canvas id="categoryBarChart" height="auto"></canvas>
+          <div id="modelChartContainer" style="display:none; margin-top: 50px;">
+            <h3>Model-wise Data</h3>
+            <canvas id="modelBarChart"></canvas>
+          </div>
+        </div>
+      </div>
     </div>
     
     {% comment %} script for first table live search and export functionality  {% endcomment %}
@@ -159,6 +173,95 @@
         fetchSummary(false);
       });
     </script>
+
+    {% comment %} script for first chart functionality  {% endcomment %}
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+          const ctx = document.getElementById('categoryBarChart').getContext('2d');
+          let barChart;
+      
+          function fetchChartData() {
+              fetch("{% url 'user_dashboard_chart_data' %}")
+              .then(response => response.json())
+              .then(data => {
+                  const categories = data.categories;
+                  const quantityReceived = data.quantity_received;
+                  const quantitySupplied = data.quantity_supplied;
+      
+                  if (barChart) {
+                      barChart.destroy();
+                  }
+      
+                  barChart = new Chart(ctx, {
+                      type: 'bar',
+                      data: {
+                          labels: categories,
+                          datasets: [
+                          {
+                            label: 'Quantity Received',
+                            data: quantityReceived,
+                            backgroundColor: 'rgba(200, 200, 200, 0.5)', // light gray
+                            borderColor: 'rgba(200, 200, 200, 1)',
+                            borderWidth: 1,
+                            barThickness: 30,  // Adjust the thickness of the bars
+                            categoryPercentage: 0.8, // Reduce the space between bars
+                            barPercentage: 0.6,  // Decrease width of the bar, more space between bars
+                            order: 1,  // Draw first
+                            grouped: false
+                        },
+                        {
+                          label: 'Quantity Supplied',
+                          data: quantitySupplied,
+                          backgroundColor: 'rgba(54, 162, 235, 0.8)', // blue filling
+                          borderColor: 'rgba(54, 162, 235, 1)',
+                          borderWidth: 1,
+                          barThickness: 15,  // Smaller thickness for quantity supplied
+                          categoryPercentage: 1.0,
+                          order: 2, // Draw on top
+                          grouped: false // Grouped bar chart
+                        }
+                          ]
+                      },
+                      options: {
+                          indexAxis: 'y', // Horizontal bars
+                          responsive: true,
+                          scales: {
+                              x: {
+                                  beginAtZero: true
+                              },
+                              y: {
+                                  beginAtZero: true
+                              }
+                          },
+                          plugins: {
+                              legend: {
+                                  position: 'top',
+                              },
+                              tooltip: {
+                                  mode: 'index',
+                                  intersect: false,
+                              },
+                              title: {
+                                  display: true,
+                                  text: 'Quantity Supplied inside Quantity Received'
+                              }
+                          }
+                      }
+                  });
+              });
+          }
+      
+          fetchChartData();
+      
+          document.getElementById('downloadChartBtn').addEventListener('click', function() {
+              const a = document.createElement('a');
+              a.href = barChart.toBase64Image();
+              a.download = 'category_progress_chart.png';
+              a.click();
+          });
+      });
+    </script>
+
   </div>
 
 {% endblock %}

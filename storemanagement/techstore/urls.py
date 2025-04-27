@@ -106,4 +106,8 @@ urlpatterns = [
     #second table in user dashboard
     path('dashboard/summary-category/', views.dashboard_summary_by_category, name='dashboard_summary_by_category'),
 
+    #chart for user dashboard
+    path('dashboard/chart-data/', views.user_dashboard_chart_data, name='user_dashboard_chart_data'),
+
+
 ]

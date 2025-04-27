@@ -111,7 +111,7 @@
           <h5 class="mb-0">Product Received and Supplied  – Category wise</h5>
         </div>
         <div class="card-body">
-          <canvas id="categoryChart" height="50" width="auto"></canvas>
+          <canvas id="categoryChart" height="auto" width="auto"></canvas>
         </div>
       </div>
 
@@ -419,6 +419,7 @@
                 ]
               },
               options: {
+                indexAxis: 'y', // Horizontal bars
                 responsive: true,
                 plugins: {
                   legend: { position: 'top' },

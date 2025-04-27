@@ -1718,3 +1718,38 @@ def dashboard_summary_by_category(request):
         </tr>
         """
     return HttpResponse(html)
+
+# first chart data - stacked bar chart for received vs supplied 
+@login_required
+def user_dashboard_chart_data(request):
+    user = request.user
+
+    # Get categories supplied to user
+    supply_orders = SupplyOrder.objects.filter(supplied_to=user)
+    user_supply_orders = UserSupplyOrder.objects.filter(user=user, item_returned_date__isnull=True)
+
+    # Group by category
+    data = {}
+    for so in supply_orders:
+        category_name = so.category.name
+        if category_name not in data:
+            data[category_name] = {
+                'quantity_received': 0,
+                'quantity_supplied': 0,
+            }
+        data[category_name]['quantity_received'] += so.quantity_supplied
+
+    for uso in user_supply_orders:
+        category_name = uso.category.name
+        if category_name in data:
+            data[category_name]['quantity_supplied'] += uso.quantity_supplied
+
+    categories = list(data.keys())
+    quantity_received = [data[cat]['quantity_received'] for cat in categories]
+    quantity_supplied = [data[cat]['quantity_supplied'] for cat in categories]
+
+    return JsonResponse({
+        'categories': categories,
+        'quantity_received': quantity_received,
+        'quantity_supplied': quantity_supplied,
+    })
