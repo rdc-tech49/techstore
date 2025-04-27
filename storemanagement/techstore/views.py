@@ -1655,3 +1655,66 @@ def export_user_dashboard_csv(request):
         ])
 
     return response
+
+
+@login_required
+def dashboard_summary_by_category(request):
+    """
+    AJAX endpoint to return <tr>…</tr> rows for the summary-by-category table,
+    or CSV if ?export=1.
+    """
+    user = request.user
+    search = request.GET.get('category', '').strip()
+
+    # Supply orders for this user
+    supply_qs = SupplyOrder.objects.filter(supplied_to=user)
+    if search:
+        supply_qs = supply_qs.filter(category__name__icontains=search)
+
+    # Unique categories in these orders
+    categories = supply_qs.values_list('category__id', 'category__name') \
+                         .distinct().order_by('category__name')
+
+    summary = []
+    for cat_id, cat_name in categories:
+        received = supply_qs.filter(category_id=cat_id) \
+                            .aggregate(total=Sum('quantity_supplied'))['total'] or 0
+
+        # total that user also re-supplied: from UserSupplyOrder, only active (not returned)
+        supplied = UserSupplyOrder.objects.filter(
+            user=user,
+            category_id=cat_id,
+            item_returned_date__isnull=True
+        ).aggregate(total=Sum('quantity_supplied'))['total'] or 0
+
+        to_be = received - supplied
+        summary.append({
+            'category': cat_name,
+            'received': received,
+            'supplied': supplied,
+            'to_be': to_be,
+        })
+
+    # CSV export?
+    if request.GET.get('export') == '1':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="summary_by_category.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['Category','Quantity Received','Quantity Supplied','Quantity To Be Supplied'])
+        for row in summary:
+            writer.writerow([row['category'], row['received'], row['supplied'], row['to_be']])
+        return response
+
+    # Otherwise return HTML rows
+    html = ""
+    for i, row in enumerate(summary, start=1):
+        html += f"""
+        <tr>
+          <td>{i}</td>
+          <td>{row['category']}</td>
+          <td>{row['received']}</td>
+          <td>{row['supplied']}</td>
+          <td>{row['to_be']}</td>
+        </tr>
+        """
+    return HttpResponse(html)

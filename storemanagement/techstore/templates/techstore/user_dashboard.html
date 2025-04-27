@@ -48,6 +48,37 @@
           {% endfor %}
         </tbody>
       </table>
+
+      <hr>
+      <h5 class="mt-5">Product Details (Category-grouped)</h5>
+
+      <div class="row mb-3">
+        <div class="col-md-4">
+          <input type="text" id="summaryFilter" class="form-control" placeholder="Search category...">
+        </div>
+        <div class="col-md-4">
+          <button id="clearSummary" class="btn btn-secondary">Clear</button>
+          <button id="exportSummary" class="btn btn-success">Export CSV</button>
+        </div>
+      </div>
+
+      <div class="table-responsive" style="max-height:400px; overflow-y:auto;">
+        <table class="table table-bordered w-100" style="table-layout: fixed;">
+          <thead class="table-danger sticky-top">
+            <tr>
+              <th class="w-5">#</th>
+              <th>Category</th>
+              <th>Qty Received</th>
+              <th>Qty Supplied</th>
+              <th>Qty To Be Supplied</th>
+            </tr>
+          </thead>
+          <tbody id="summaryBody">
+            <tr><td colspan="5" class="text-center">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
       
     </div>
     
@@ -91,6 +122,42 @@
       
       // initial load
       document.addEventListener('DOMContentLoaded', fetchDashboardData);
+    </script>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const filterInput = document.getElementById('summaryFilter');
+        const clearBtn     = document.getElementById('clearSummary');
+        const exportBtn    = document.getElementById('exportSummary');
+        const body         = document.getElementById('summaryBody');
+        const url          = "{% url 'dashboard_summary_by_category' %}";
+    
+        function fetchSummary(exportCSV=false) {
+          const q = encodeURIComponent(filterInput.value.trim());
+          let fullUrl = url + '?';
+          if (q) fullUrl += 'category=' + q + '&';
+          if (exportCSV) fullUrl += 'export=1';
+    
+          if (exportCSV) {
+            // simply redirect to download
+            window.location.href = fullUrl;
+          } else {
+            fetch(fullUrl, { headers: { 'X-Requested-With':'XMLHttpRequest' } })
+              .then(r => r.text())
+              .then(html => { body.innerHTML = html; });
+          }
+        }
+    
+        filterInput.addEventListener('input', () => fetchSummary(false));
+        clearBtn.addEventListener('click', () => {
+          filterInput.value = '';
+          fetchSummary(false);
+        });
+        exportBtn.addEventListener('click', () => fetchSummary(true));
+    
+        // initial load
+        fetchSummary(false);
+      });
     </script>
   </div>
 
