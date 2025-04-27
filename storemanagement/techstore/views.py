@@ -1753,3 +1753,51 @@ def user_dashboard_chart_data(request):
         'quantity_received': quantity_received,
         'quantity_supplied': quantity_supplied,
     })
+
+@login_required
+def get_model_data(request, category_name):
+    user = request.user
+
+    # 1. Get models under the given category for the user from SupplyOrder
+    supply_orders = SupplyOrder.objects.filter(
+        supplied_to=user,   # 🔥 corrected here
+        category__name=category_name
+    ).select_related('model')
+
+    # 2. Aggregate quantity received (from SupplyOrder)
+    model_received = supply_orders.values('model__model').annotate(
+        total_received=Sum('quantity_supplied')
+    )
+
+    # 3. Aggregate quantity supplied (from UserSupplyOrder)
+    user_orders = UserSupplyOrder.objects.filter(
+        user=user,
+        category__name=category_name,
+        item_returned_date__isnull=True
+    ).select_related('model')
+
+    model_supplied = user_orders.values('model__model').annotate(
+        total_supplied=Sum('quantity_supplied')
+    )
+
+    # 4. Create dictionaries
+    received_dict = {item['model__model']: item['total_received'] for item in model_received}
+    supplied_dict = {item['model__model']: item['total_supplied'] for item in model_supplied}
+
+    # 5. Merge model names
+    model_names = sorted(set(received_dict.keys()) | set(supplied_dict.keys()))
+
+    quantity_received = []
+    quantity_supplied = []
+
+    for model in model_names:
+        quantity_received.append(received_dict.get(model, 0))
+        quantity_supplied.append(supplied_dict.get(model, 0))
+
+    data = {
+        'models': model_names,
+        'quantity_received': quantity_received,
+        'quantity_supplied': quantity_supplied
+    }
+
+    return JsonResponse(data)

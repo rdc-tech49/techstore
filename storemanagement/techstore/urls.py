@@ -108,6 +108,7 @@ urlpatterns = [
 
     #chart for user dashboard
     path('dashboard/chart-data/', views.user_dashboard_chart_data, name='user_dashboard_chart_data'),
+    path('dashboard/chart/model/<str:category_name>/', views.get_model_data, name='get_model_data'),  # Correct URL
 
 
 ]
